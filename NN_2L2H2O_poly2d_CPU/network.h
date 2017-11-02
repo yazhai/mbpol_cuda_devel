@@ -12,6 +12,23 @@
 #include <vector>
 #include <math.h>
 #include "utility.h"
+#include <H5Cpp.h>
+#include <memory>
+#include <iomanip>
+
+#include "readhdf5.hpp"
+#define INFILE1     "32_2b_nn_single.hdf5"     // HDF5 files for different precisions
+#define INFILE2     "32_2b_nn_double.hdf5"
+#define CHECKCHAR1  "W"                 // dense_1_[W]           for "W"
+#define CHECKCHAR2  "l"                 // dense_1/kerne[l]      for "l"
+#define PATHTOMODEL "/model_weights"    // usual path to the group saving all the layers in HDF5 file
+#define LAYERNAMES  "layer_names"       // Attribute name saving the list of layer names in HDF5
+#define WEIGHTNAMES "weight_names"      // Attribute name saving the list of weight names in HDF5
+#define LASTATVID   12				//The sequence ID of last activiation layer.
+#define SAMPLECOUNT 11                  // input sample count
+#define SAMPLEDIM   69                  // each input sample's dim 
+#define MAXSHOWRESULT 20                // Max count of result to show
+
 
 // Define the cblas library 
 #ifdef _USE_GSL
@@ -116,9 +133,13 @@ public:
 
 	void fullyConnectedForward(const Layer_t<T> & layer,
                           	int& input, int&output, int&N,
-                          	T* srcData, T** dstData)
+                          	T* & srcData, T** & dstData)
 	{
-
+		output = layer.outputs;
+		if(dstData != nullptr){
+			clearMemo<T>(dstData);			
+		}
+		init_mtx_in_mem<T>(dstData,(size_t &)N,(size_t &)output);
 //no transpose
 
 		for(int i=0;i<N;i++){
@@ -129,13 +150,17 @@ public:
 				}
 				dstData[i][j] +=layer.bias[j];
 			}
+			//cout<<dstData[i][j]
 		}
+		
+		input = output;
 
 
 //		Attempt at transposing before multiply
 
 
 /*
+		output = layer.outputs;		
 		size_t output_t = output, N_t = N, input_t = input;
 
 		T ** tempIn = NULL;
@@ -179,6 +204,8 @@ public:
 		clearMemo<T>(tempDestT);
 		clearMemo<T>(tempIn);
 		clearMemo<T>(tempWeights);
+		input = output;
+
 */
     	
     	} 
@@ -186,7 +213,9 @@ public:
 
 
 
-	void activationForward_TANH(const int & output,const int & N , T** srcData, T** dstData){
+	void activationForward_TANH(const int & output,const int & N , T** srcData, T** dstData){	
+		
+	
 		T x;
 		for(int i=0;i<N;i++){
 			for(int j=0;j<output;j++){
@@ -215,10 +244,20 @@ void network_t<float>::fullyConnectedForward(const Layer_t<float> & layer,int& i
 template<typename T>
 class Layer_Net_t{
 private: 
+
+	network_t<T> neural_net;
+	
+	void switchptr(T** & alpha, T** & bravo){
+    		T** tmp;
+          tmp = alpha;
+          alpha = bravo;
+          bravo = tmp;
+          tmp = nullptr;
+     }
 	
 public:
 	
-	network_t<T> neural_net;	//made public just for test purposes	
+	//network_t<T> neural_net;	//made public just for test purposes	
 	
 	Layer_t<T> * root = nullptr;
 	
@@ -268,6 +307,7 @@ public:
 	}
 
 	void insert_layer(string &_name, ActType_t _acttype){
+		cout<<"TRACE"<<endl;
 		if (root!=NULL) {
                Layer_t<T> * curr = root;
                while(curr->next) {curr = curr->next;};
@@ -278,8 +318,233 @@ public:
                root = new Layer_t<T>(_name, _acttype);
           }
      
-     }     
+     }
+
+	// Get layer ptr according to its index (start from 1 as 1st layer, 2 as seond layer ...)
+     Layer_t<T>* get_layer_by_seq(int _n){
+          Layer_t<T>* curr=root;
+          int i = 1;
+          
+          while( (curr->next != NULL)  && (i<_n) ){
+               curr = curr->next;
+               i++ ;
+          };
+          return curr;
+     } 
+	
+	 // Make prediction according to all the layers in the model
+     void predict(T* _inputData, int _N, int _input, T* & _outputData, unsigned long int& _outsize){
+		if (root != NULL) {
+             
+			int input = _input;
+			int N = _N;
+             	int output = 1;
+
+             	// two ptrs towards either alpha or bravo
+             	// controlling from which the data is read
+             	// and to which the result is written to 
+             	T** srcDataPtr = nullptr; 
+			T** dstDataPtr = nullptr;
+
+			init_mtx_in_mem<T>(srcDataPtr,(size_t&)N,(size_t&)input);
+			//for(int i=0;i<input;i++){
+			//		copy(_inputData + input*i,_inputData + input*(i+1)-1,);
+			//	}
+			copy(_inputData,_inputData+input*N,srcDataPtr[0]);
+			       
+                                              
+             	Layer_t<T>* curr = root;
+
+            	do{
+               	//cout << " Processing Layer : " << curr->name << endl;
+               	if ( curr-> type == Type_t::DENSE ) { 
+                    	// If it is a dense layer, we perform fully_connected forward 
+                   		neural_net.fullyConnectedForward((*curr), input,output,N, *srcDataPtr, dstDataPtr);
+                    	// Swith the origin/target memory array after the step
+                    	switchptr(srcDataPtr, dstDataPtr);
+
+                      
+              		} else if (curr -> type == Type_t::ACTIVIATION){
+                    	// If it is an activiation layer, perform corresponding activiation forwards
+                    // In fact, activiation::linear = doing NOTHING 
+                    	if (curr -> acttype == ActType_t::TANH){
+                         	neural_net.activationForward_TANH(output,N, srcDataPtr, dstDataPtr);
+                         	switchptr(srcDataPtr, dstDataPtr);
+                    	} else if (curr->acttype == ActType_t::LINEAR) {    
+                         	cout << "Linear Activation Layer Called" <<endl;
+                    	} else {
+						cout <<"Unknown Activation Type!"<<endl;
+					}
+              	 	} else {
+                    	cout << "Unknown layer type!" <<endl;
+               	}
+
+        		} while(  (curr=curr->next) != NULL);
+             
+             	//cout << "Final score : " ;        
+             	//printDeviceVector<T>(n*h*w, *srcDataPtr);
+             
+             	_outsize=input*N;
+             	if(_outputData!=NULL){
+                    delete[] _outputData;
+             	}
+             	_outputData = new T[_outsize];
+             	//copy from srcDataPtr to outputData          
+            	copy(*srcDataPtr,*srcDataPtr + _outsize,_outputData);
+             
+             
+             	// Don't forget to release resource !!!
+             	srcDataPtr = nullptr;
+             	dstDataPtr = nullptr;
+              
+        
+        }
+        return;
+	}
+		    
 };	
+
+using namespace H5;
+// tester function, including reading HDF5 file, creating layers, and making the prediction.
+template <typename T>
+void runtester(const char* filename, const char* checkchar, T* input){
+     // initialize memory for rank, dims, and data
+     // !!! Don't forget to free memory before exit!!!
+     hsize_t data_rank=0;
+     hsize_t* data_dims = nullptr;
+     T* data = nullptr;     
+     
+     hsize_t bias_rank=0;
+     hsize_t* bias_dims = nullptr;
+     T* bias = nullptr;
+     
+     Layer_Net_t<T> layers;
+     
+     // reserver for results
+     unsigned long int outsize = 0; 
+     T* output = nullptr;     
+     
+     // Open HDF5 file handle, read only
+     H5File file(filename,H5F_ACC_RDONLY);
+     
+     
+     try{     
+          // Get saved layer names
+          vector<string> layernames;
+          layernames = Read_Attr_Data_By_Seq(file,PATHTOMODEL, LAYERNAMES); 
+
+          for (auto it=layernames.begin();it!=layernames.end();it++) {
+               // for one single layer
+               // layer's fullpath
+               string layerpath = mkpath ( string(PATHTOMODEL),  *it ) ;
+               
+               // get this layer's dataset names
+               vector<string> weights;
+               weights = Read_Attr_Data_By_Seq(file,layerpath.c_str(), WEIGHTNAMES);
+               
+               
+               cout << " Reading out layer data: " << *it << endl;
+               for (auto it2 = weights.begin(); it2 != weights.end(); it2++){ 
+                    // foe one data set
+                    // dataset's path
+                    string datasetPath = mkpath(layerpath,*it2) ;
+                    
+                    // check the dataset name's last character to see if this dataset is a Weight or a Bias
+                    if ((*it2).compare(((*it2).length()-1),1, checkchar )==0){
+                         // get out weight data
+                         Read_Layer_Data_By_DatName<T> (file, datasetPath.c_str(), data, data_rank, data_dims); 
+                    }else{
+                         // get out bias data
+                         Read_Layer_Data_By_DatName<T> (file, datasetPath.c_str(), bias, bias_rank, bias_dims);             
+                    }
+               }
+               // When reading out a dense layer, a 2d weight matrix is obtained
+               // Otherwise, it is a 0d matrix (null)
+               if (data_rank==2){
+                    cout << " Initialize dense layer : " << *it << endl;
+	
+				size_t inputs_t = data_dims[0], outputs_t = data_dims[1];
+				T** weights_Matrix;
+				init_mtx_in_mem<T>(weights_Matrix,(size_t&)data_dims[0],(size_t&)data_dims[1]);							//TODO: bad solution
+				//for(int i=0;i<data_dims[0];i++){
+				//	copy(data + data_dims[1]*i,data+data_dims[1]*(i+1)-1,weights_Matrix[i]);
+				//}
+				copy(data,data+data_dims[0]*data_dims[1],weights_Matrix[0]);
+                    
+
+				layers.insert_layer(*it, data_dims[0], data_dims[1], weights_Matrix, bias);			
+				
+				clearMemo<T>(weights_Matrix);
+                    
+				data_rank=0;
+                    bias_rank=0;
+               } else {
+                    cout << " Initialize activiation layer : " << *it << endl;
+                    layers.insert_layer(*it, ActType_t::TANH);               
+               }
+
+               
+               cout << " Layer " << *it << " is initialized. " <<endl <<endl;
+          }
+          
+          cout << "Inserting Layers finished !" <<endl;
+          
+          // In our test model, we insert 5 (fully_connect + tanh_activiation) layers
+          // plus 1 (fully_connect + linear_activiation) layers
+          // So change the last activiation layer's type to linear
+          layers.get_layer_by_seq(LASTATVID) -> acttype = ActType_t::LINEAR;
+          
+          cout << endl;
+          cout << "Prediction all samples : " <<endl;
+          layers.predict(input, SAMPLECOUNT, SAMPLEDIM, output, outsize);
+          
+          // show up the final score, to check the result consistency
+          // first, setup the precision
+          if(TypeIsDouble<T>::value) {
+               std::cout.precision(std::numeric_limits<double>::digits10+1);
+          } else {
+               std::cout.precision(std::numeric_limits<float>::digits10+1);;
+          }
+          std::cout.setf( std::ios::fixed, std::ios::floatfield );        
+          
+          // then, select how many results will be shown.
+          // if too many output, only show some in the beginning and some in the end
+          if (outsize <= MAXSHOWRESULT){
+               cout << endl << " Final score are :" <<endl;            
+                for(int ii=0; ii<outsize; ii++){
+                    cout << (output[ii]) << "  " ;
+               }         
+          } else {
+               cout << " Final score ( first " << MAXSHOWRESULT/2 << " records ):" <<endl;
+               for(int ii=0; ii<(MAXSHOWRESULT/2); ii++){
+                    cout << (output[ii]) << "  " ;
+               }
+               cout << endl << " Final score ( last " << MAXSHOWRESULT/2 << " records ):" <<endl;
+               for(int ii=(outsize-MAXSHOWRESULT/2); ii<outsize; ii++){
+                    cout << (output[ii]) << "  " ;
+               }                         
+          }
+          cout << endl;        
+          
+          
+     } catch (...){
+          if(bias!=NULL)       delete[] bias;
+          if(bias_dims!=NULL)  delete[] bias_dims;
+          if(data!=NULL)       delete[] data;
+          if(data_dims!=NULL)  delete[] data_dims;  
+          if(output!=NULL) delete[] output;          
+          file.close();
+     }
+
+     // Free memory of allocated arraies.
+     if(bias!=NULL)       delete[] bias;
+     if(bias_dims!=NULL)  delete[] bias_dims;
+     if(data!=NULL)       delete[] data;
+     if(data_dims!=NULL)  delete[] data_dims;     
+     if(output!=NULL) delete[] output;       
+     file.close();
+     return;
+}
 
 
 

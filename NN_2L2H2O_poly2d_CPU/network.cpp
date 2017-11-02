@@ -7,11 +7,27 @@
 #include <limits>
 #include <vector>
 #include <math.h>
+#include <H5Cpp.h>
+#include <memory>
+#include <iomanip>
 
 
 #include "utility.h"
 #include "network.h"
 #include "timestamps.h"
+#include "NN_2L2H2O_poly2d.in"   
+#include "readhdf5.hpp"
+#define INFILE1     "32_2b_nn_single.hdf5"     // HDF5 files for different precisions
+#define INFILE2     "32_2b_nn_double.hdf5"
+#define CHECKCHAR1  "W"                 // dense_1_[W]           for "W"
+#define CHECKCHAR2  "l"                 // dense_1/kerne[l]      for "l"
+#define PATHTOMODEL "/model_weights"    // usual path to the group saving all the layers in HDF5 file
+#define LAYERNAMES  "layer_names"       // Attribute name saving the list of layer names in HDF5
+#define WEIGHTNAMES "weight_names"      // Attribute name saving the list of weight names in HDF5
+#define LASTATVID   12				//The sequence ID of last activiation layer.
+#define SAMPLECOUNT 11                  // input sample count
+#define SAMPLEDIM   69                  // each input sample's dim 
+#define MAXSHOWRESULT 20                // Max count of result to show
 
 // Define the cblas library 
 #ifdef _USE_GSL
@@ -30,6 +46,8 @@ void network_t<double>::fullyConnectedForward(const Layer_t<double> & layer,
                           	int& input, int&output, int&N,
                           	double* srcData, double** dstData)
 	{
+		
+		output = layer.outputs;
 		//store bias in dstData matrix(copy to each col) before computation
 		//dstData is transposed to fully utilize rowMajor storage
 		for(int i=0;i<N;i++)
@@ -47,6 +65,8 @@ void network_t<double>::fullyConnectedForward(const Layer_t<double> & layer,
 		transpose_mtx<double>(temp,dstData,output_t,N_t);
 		
 		clearMemo<double>(temp);
+		
+		input = output;
      	
     	}; 
 
@@ -55,6 +75,7 @@ void network_t<float>::fullyConnectedForward(const Layer_t<float> & layer,
                           	int& input, int&output, int&N,
                           	float* srcData, float** dstData)
 	{
+		output = layer.outputs;
 
 		//store bias in dstData matrix(copy to each col) before computation
 		//dstData is transposed to fully utilize rowMajor storage
@@ -73,14 +94,17 @@ void network_t<float>::fullyConnectedForward(const Layer_t<float> & layer,
 		transpose_mtx<float>(temp,dstData,output_t,N_t);
 		
 		clearMemo<float>(temp);
+
+		input = output;
 	};
 		
 #endif
 
 
+
 /*TESTER*/
 int main(int argc, char** argv){ 
-	timers_t timers;
+	/*timers_t timers;
 	timerid_t id;
 	timers.insert_random_timer( id, 0, "Tester Execution");
      timers.timer_start(id);
@@ -262,6 +286,19 @@ int main(int argc, char** argv){
 
 	timers.timer_end(id);
 	timers.get_time_collections();
+	return 0;
+*/
+try{
+     cout << " Run tester with single floating point precision : " <<endl;
+     runtester<float> (INFILE1, CHECKCHAR1, X[0]);
+     cout << endl << endl;
+     cout << " ================================================= " <<endl << endl;
+     cout << " Run tester with double floating point precision : " <<endl;
+     runtester<double>(INFILE2, CHECKCHAR2, Y[0]);
+     } catch (...) {
+          exit(1);     
+     }
+     exit(0);      
 	return 0;
 	
 }
