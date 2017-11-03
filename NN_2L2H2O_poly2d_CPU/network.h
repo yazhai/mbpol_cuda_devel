@@ -11,24 +11,23 @@
 #include <limits>
 #include <vector>
 #include <math.h>
-#include "utility.h"
 #include <H5Cpp.h>
 #include <memory>
 #include <iomanip>
 
+#include "utility.h"
 #include "readhdf5.hpp"
-#define INFILE1     "32_2b_nn_single.hdf5"     // HDF5 files for different precisions
-#define INFILE2     "32_2b_nn_double.hdf5"
-#define CHECKCHAR1  "W"                 // dense_1_[W]           for "W"
-#define CHECKCHAR2  "l"                 // dense_1/kerne[l]      for "l"
+
+//file things
 #define PATHTOMODEL "/model_weights"    // usual path to the group saving all the layers in HDF5 file
 #define LAYERNAMES  "layer_names"       // Attribute name saving the list of layer names in HDF5
 #define WEIGHTNAMES "weight_names"      // Attribute name saving the list of weight names in HDF5
-#define LASTATVID   12				//The sequence ID of last activiation layer.
-#define SAMPLECOUNT 11                  // input sample count
-#define SAMPLEDIM   69                  // each input sample's dim 
-#define MAXSHOWRESULT 20                // Max count of result to show
 
+//NN constants
+#define LASTATVID   12				//The sequence ID of last activiation layer.
+#define SAMPLECOUNT 11                  // input sample count(N)
+#define SAMPLEDIM   69                  // each input sample's dim(input) 
+#define MAXSHOWRESULT 20                // Max count of result to show
 
 // Define the cblas library 
 #ifdef _USE_GSL
@@ -39,7 +38,27 @@
 //#include <gsl/gsl_cblas.h>
 #endif
 
+
+
+
+//***********************************************************************************
+// Structure of Network:
+//		dimensions: N = number of samples, input = sample input Dimension, 
+//			output = sample output dimension
+//		Layer Weights: Inputed as  input x output dimensional array
+//		Layer Bias:	Inputed as 1xoutput dimensional array
+//						extended to Nxoutput dimensional array for computation
+//		Layer Input:	Inputed as N x input dimensional array
+//		
+//		Output = Input*Weights + Bias
+//		
+//		OR: Output = transpose(Weights) * transpose(Input) + transpose(Bias)
+//		This second method is used in the code in order to take advantage of 
+//		rowMajor memory storage.
+//***********************************************************************************
+
 using namespace std;
+
 
 //Type of Layer
 enum class Type_t {
@@ -57,16 +76,17 @@ enum class ActType_t {
      MAX_ACTTYPE_VALUE = 3
 };
 
+
 template<typename T>
 struct Layer_t{
 	string name;
 	Type_t type;
 	ActType_t acttype;
  	
-	int inputs;     // number of input dimension
-    	int outputs;    // number of output dimension
-    	T ** weights; // weight matrix
-    	T * bias; // bias vector 
+	size_t inputs;     // number of input dimension
+    	size_t outputs;    // number of output dimension
+    	T ** weights; // weight matrix(stored as outputs x inputs)
+    	T * bias; // bias vector(1xoutput) or (outputx1)
 
 	Layer_t * prev = nullptr;
 	Layer_t * next = nullptr;
@@ -75,22 +95,24 @@ struct Layer_t{
 		outputs(0), type(Type_t::UNINITIALIZED), acttype(ActType_t::NOACTIVIATION) {};
 
 
-	Layer_t( string _name, int _inputs, int _outputs, 
-          	T** _weights, T* _bias)
-                  : inputs(_inputs), outputs(_outputs), type(Type_t::DENSE), acttype(ActType_t::NOACTIVIATION)
-    	{     
+	Layer_t( string _name, size_t _inputs, size_t _outputs, 
+          	T* _weights, T* _bias)
+                  : inputs(_inputs), outputs(_outputs), type(Type_t::DENSE), 
+			acttype(ActType_t::NOACTIVIATION){
+     
         	name = _name ;
-		size_t outputs_t = outputs, inputs_t = inputs;
 
-		/*init Weight Matrix = Input x Output dimensions */
-        	if(!init_mtx_in_mem<T>(weights,inputs_t,outputs_t)){
+		/*init Weight Matrix = Output x Input Dimensions (Transposed)*/
+		T ** temp;
+		weights = nullptr;
+        	if(!init_mtx_in_mem<T>(temp,inputs,outputs)){
 			cout<<"FAILED TO INITIALIZE MEMORY FOR WEIGHTS"<<endl;
 		}
-		for(int i=0;i<inputs;i++){
-			copy(_weights[i],(_weights[i]+outputs),weights[i]);
-		}
+		copy(_weights,_weights+outputs*inputs,temp[0]);
+		transpose_mtx<T>(weights, temp, inputs, outputs);		
+		clearMemo<T>(temp);
 
-		/*init Bias Matrix = 1 x Output dimensions */
+		/*init Bias Matrix = 1xOutput dimensions -- "Pseudo-Transposed" */
 		bias = new T[outputs];
 		copy(_bias,_bias+outputs,bias);
 	}
@@ -98,127 +120,81 @@ struct Layer_t{
 	// construct an activation layer, by integer 
 	Layer_t(string _name, int _acttype)
                   : weights(NULL), bias(NULL),inputs(0), outputs(0), 
-			type(Type_t::ACTIVIATION)
-    {     
+			type(Type_t::ACTIVIATION){
+     
      	if (_acttype < int(ActType_t::MAX_ACTTYPE_VALUE) ) {
                acttype = static_cast<ActType_t>(_acttype);
           }
           name = _name;
-    }
+    	}
 
 	//construct an activation layer by name
 	Layer_t(string _name, ActType_t _acttype)
                   : weights(NULL),bias(NULL),inputs(0),outputs(0), 
-                type(Type_t::ACTIVIATION)
-    {      
+                type(Type_t::ACTIVIATION){
+      
           acttype = _acttype;
-          
           name = _name;
-    } 
+    	} 
 
 	~Layer_t(){
 		if(weights != NULL){
 			clearMemo<T>(weights);
 		}
-	
 		if(bias != NULL) delete [] bias;
 	}
 
 };
 
+
+//Class to Move propogate through network
 template<typename T>
 class network_t{
 
 public:
-
+	
+	//non-cblas implementation of fully Connected Forward Propogation
 	void fullyConnectedForward(const Layer_t<T> & layer,
-                          	int& input, int&output, int&N,
-                          	T* & srcData, T** & dstData)
-	{
+                          	size_t & input, size_t & output, size_t & N,
+                          	T* & srcData, T** & dstData){
+
+		//update dimensionals for layer
 		output = layer.outputs;
+
+		//create space for output
 		if(dstData != nullptr){
-			clearMemo<T>(dstData);			
+			clearMemo<T>(dstData);	
 		}
-		init_mtx_in_mem<T>(dstData,(size_t &)N,(size_t &)output);
-//no transpose
-
-		for(int i=0;i<N;i++){
-			for(int j=0;j<output;j++){
-				dstData[i][j] = 0;
-				for(int k=0;k<input;k++){
-					dstData[i][j] += srcData[input*i+k]*layer.weights[k][j];
-				}
-				dstData[i][j] +=layer.bias[j];
-			}
-			//cout<<dstData[i][j]
-		}
-		
-		input = output;
-
-
-//		Attempt at transposing before multiply
-
-
-/*
-		output = layer.outputs;		
-		size_t output_t = output, N_t = N, input_t = input;
-
-		T ** tempIn = NULL;
-		T ** tempInT = NULL;
-		T ** tempWeightsT = NULL;
-		T ** tempWeights = NULL;
-		T ** tempDestT = NULL;
-
-		
-		init_mtx_in_mem<T>(tempIn, N_t, input_t);  
-
-		for(int i=0;i<N;i++)
-			for(int j=0;j<input;j++)
-				tempIn[i][j] = srcData[input*i+j];
-
-		init_mtx_in_mem<T>(tempWeights,input_t,output_t);
-
-		for(int i=0;i<input;i++){
-			copy(layer.weights[i],layer.weights[i]+output,tempWeights[i]);
-		}
-
-		init_mtx_in_mem<T>(tempDestT,output_t,N_t);
-		transpose_mtx<T>(tempIn,tempInT,N_t,input_t);
-		transpose_mtx<T>(tempWeights,tempWeightsT,input_t,output_t);
-
+		init_mtx_in_mem<T>(dstData,output,N);
+	
+		//Conduct Matrix Multiplication, and Bias addition
 		for(int i=0;i<output;i++){
 			for(int j=0;j<N;j++){
-				tempDestT[i][j] = 0;
+				dstData[i][j] = 0;
 				for(int k=0;k<input;k++){
-					tempDestT[i][j] += tempWeightsT[i][k]*tempInT[k][j];
+					dstData[i][j] += layer.weights[i][k]*srcData[N*k+j];
 				}
-				tempDestT[i][j] += layer.bias[i];
+				dstData[i][j] +=layer.bias[i];
 			}
 		}
-
-		transpose_mtx<T>(tempDestT,dstData,output_t,N_t);
 		
-		clearMemo<T>(tempIn);
-		clearMemo<T>(tempInT);
-		clearMemo<T>(tempWeightsT);
-		clearMemo<T>(tempDestT);
-		clearMemo<T>(tempIn);
-		clearMemo<T>(tempWeights);
+		//update dimensions of input for next layer's use
 		input = output;
-
-*/
-    	
     	} 
 
-
-
-
-	void activationForward_TANH(const int & output,const int & N , T** srcData, T** dstData){	
+	//non-cblas implementaiton of forward propogation activation function(TANH)
+	void activationForward_TANH(const int & output,const int & N , T** srcData, T** & dstData){	
 		
-	
+		//create space for output
+		if(dstData != nullptr){
+			clearMemo<T>(dstData);	
+		}
+		init_mtx_in_mem<T>(dstData,output,N);
+		
+		//complete faster TANH computation
 		T x;
-		for(int i=0;i<N;i++){
-			for(int j=0;j<output;j++){
+		for(int i=0;i<output;i++){
+			for(int j=0;j<N;j++){
 				x = srcData[i][j];
 				x = exp(2*x);
 				x = (x-1)/(x+1);
@@ -227,26 +203,28 @@ public:
 		}
 	}
 		
-
 };
 
-#if defined (_USE_GSL) || defined (_USE_MKL)
+
 // Using cblas_dgemm if libraries are employed
+#if defined (_USE_GSL) || defined (_USE_MKL)
 template <>
-void network_t<double>::fullyConnectedForward(const Layer_t<double> & layer,int& input, int&output, int&N,double* srcData, double** dstData);
+void network_t<double>::fullyConnectedForward(const Layer_t<double> & layer,size_t & input, size_t & output, size_t & N,double* & srcData, double** & dstData);
 
 template<>
-void network_t<float>::fullyConnectedForward(const Layer_t<float> & layer,int& input, int&output, int&N,float* srcData, float** dstData);
+void network_t<float>::fullyConnectedForward(const Layer_t<float> & layer,size_t & input, size_t & output, size_t & N,float* & srcData, float** & dstData);
 #endif
 
 
-
+//class for Network of Layers
 template<typename T>
 class Layer_Net_t{
 private: 
-
+	
+	//controls propogation through network
 	network_t<T> neural_net;
 	
+	//helper function: switch two pointers to pointers
 	void switchptr(T** & alpha, T** & bravo){
     		T** tmp;
           tmp = alpha;
@@ -257,7 +235,7 @@ private:
 	
 public:
 	
-	//network_t<T> neural_net;	//made public just for test purposes	
+	//network_t<T> neural_net;	//make public for testing purposes
 	
 	Layer_t<T> * root = nullptr;
 	
@@ -280,8 +258,8 @@ public:
 	}
 	
 	//inserting a dense layer
-	void insert_layer(string &_name, int _inputs, int _outputs, 
-          T ** & _weights, T * & _bias){
+	void insert_layer(string &_name, size_t _inputs, size_t _outputs, 
+          T * & _weights, T * & _bias){
 		if(root!=NULL){
 			Layer_t<T> * curr = root;
 			while(curr->next){curr = curr->next;};
@@ -306,6 +284,7 @@ public:
 		}
 	}
 
+	//Inserting an activation layer by type(enum)
 	void insert_layer(string &_name, ActType_t _acttype){
 		cout<<"TRACE"<<endl;
 		if (root!=NULL) {
@@ -320,7 +299,7 @@ public:
      
      }
 
-	// Get layer ptr according to its index (start from 1 as 1st layer, 2 as seond layer ...)
+	// Get layer ptr according to its index (start from 1 as 1st layer, 2 as second layer ...)
      Layer_t<T>* get_layer_by_seq(int _n){
           Layer_t<T>* curr=root;
           int i = 1;
@@ -336,78 +315,83 @@ public:
      void predict(T* _inputData, int _N, int _input, T* & _outputData, unsigned long int& _outsize){
 		if (root != NULL) {
              
-			int input = _input;
-			int N = _N;
-             	int output = 1;
+			size_t input = _input;
+			size_t N = _N;
+             	size_t output = 1;
 
-             	// two ptrs towards either alpha or bravo
-             	// controlling from which the data is read
-             	// and to which the result is written to 
+             	//two pointers used to store and recieve data(switch between them)
              	T** srcDataPtr = nullptr; 
 			T** dstDataPtr = nullptr;
 
-			init_mtx_in_mem<T>(srcDataPtr,(size_t&)N,(size_t&)input);
-			//for(int i=0;i<input;i++){
-			//		copy(_inputData + input*i,_inputData + input*(i+1)-1,);
-			//	}
-			copy(_inputData,_inputData+input*N,srcDataPtr[0]);
-			       
+			//init srcDataPtr to point to tranpose of input data
+			T** temp;
+			init_mtx_in_mem<T>(temp,N,input);
+			copy(_inputData,_inputData+input*N,temp[0]);
+			transpose_mtx<T>(srcDataPtr, temp, N, input);
+			clearMemo<T>(temp);
                                               
              	Layer_t<T>* curr = root;
 
             	do{
-               	//cout << " Processing Layer : " << curr->name << endl;
+      			//DENSE LAYER PROPOGATION
                	if ( curr-> type == Type_t::DENSE ) { 
                     	// If it is a dense layer, we perform fully_connected forward 
                    		neural_net.fullyConnectedForward((*curr), input,output,N, *srcDataPtr, dstDataPtr);
-                    	// Swith the origin/target memory array after the step
+					//note:the array dimensions are switched inside of fullyConnectedForward function
                     	switchptr(srcDataPtr, dstDataPtr);
 
-                      
-              		} else if (curr -> type == Type_t::ACTIVIATION){
+                      //ACTIVATION LAYER PROPOGATION
+              		} 
+				else if (curr -> type == Type_t::ACTIVIATION){
                     	// If it is an activiation layer, perform corresponding activiation forwards
-                    // In fact, activiation::linear = doing NOTHING 
                     	if (curr -> acttype == ActType_t::TANH){
                          	neural_net.activationForward_TANH(output,N, srcDataPtr, dstDataPtr);
                          	switchptr(srcDataPtr, dstDataPtr);
-                    	} else if (curr->acttype == ActType_t::LINEAR) {    
+                    	} 
+					else if (curr->acttype == ActType_t::LINEAR) {    
                          	cout << "Linear Activation Layer Called" <<endl;
-                    	} else {
+                    	} 
+					else {
 						cout <<"Unknown Activation Type!"<<endl;
 					}
-              	 	} else {
+              	 	} 
+				else {
                     	cout << "Unknown layer type!" <<endl;
                	}
 
-        		} while(  (curr=curr->next) != NULL);
+        		} 
+			while(  (curr=curr->next) != NULL);
              
-             	//cout << "Final score : " ;        
-             	//printDeviceVector<T>(n*h*w, *srcDataPtr);
-             
+			//final output size calculated
              	_outsize=input*N;
+
+			//create space for output Data
              	if(_outputData!=NULL){
                     delete[] _outputData;
              	}
              	_outputData = new T[_outsize];
+			
              	//copy from srcDataPtr to outputData          
             	copy(*srcDataPtr,*srcDataPtr + _outsize,_outputData);
-             
-             
+                       
              	// Don't forget to release resource !!!
-             	srcDataPtr = nullptr;
-             	dstDataPtr = nullptr;
-              
-        
+			clearMemo<T>(srcDataPtr);
+			clearMemo<T>(dstDataPtr);
+			srcDataPtr = nullptr;
+             	dstDataPtr = nullptr;  
         }
+
         return;
-	}
-		    
+	}	    
 };	
 
-using namespace H5;
+
 // tester function, including reading HDF5 file, creating layers, and making the prediction.
 template <typename T>
 void runtester(const char* filename, const char* checkchar, T* input){
+
+	using namespace H5;
+	
      // initialize memory for rank, dims, and data
      // !!! Don't forget to free memory before exit!!!
      hsize_t data_rank=0;
@@ -434,26 +418,25 @@ void runtester(const char* filename, const char* checkchar, T* input){
           layernames = Read_Attr_Data_By_Seq(file,PATHTOMODEL, LAYERNAMES); 
 
           for (auto it=layernames.begin();it!=layernames.end();it++) {
-               // for one single layer
-               // layer's fullpath
+               // for one single layer get path
                string layerpath = mkpath ( string(PATHTOMODEL),  *it ) ;
                
-               // get this layer's dataset names
+               // get this layer's dataset names(weights and bias)
                vector<string> weights;
                weights = Read_Attr_Data_By_Seq(file,layerpath.c_str(), WEIGHTNAMES);
                
                
                cout << " Reading out layer data: " << *it << endl;
                for (auto it2 = weights.begin(); it2 != weights.end(); it2++){ 
-                    // foe one data set
-                    // dataset's path
+                    // for one data set get path
                     string datasetPath = mkpath(layerpath,*it2) ;
                     
                     // check the dataset name's last character to see if this dataset is a Weight or a Bias
                     if ((*it2).compare(((*it2).length()-1),1, checkchar )==0){
                          // get out weight data
                          Read_Layer_Data_By_DatName<T> (file, datasetPath.c_str(), data, data_rank, data_dims); 
-                    }else{
+                    }
+				else{
                          // get out bias data
                          Read_Layer_Data_By_DatName<T> (file, datasetPath.c_str(), bias, bias_rank, bias_dims);             
                     }
@@ -462,28 +445,19 @@ void runtester(const char* filename, const char* checkchar, T* input){
                // Otherwise, it is a 0d matrix (null)
                if (data_rank==2){
                     cout << " Initialize dense layer : " << *it << endl;
-	
-				size_t inputs_t = data_dims[0], outputs_t = data_dims[1];
-				T** weights_Matrix;
-				init_mtx_in_mem<T>(weights_Matrix,(size_t&)data_dims[0],(size_t&)data_dims[1]);							//TODO: bad solution
-				//for(int i=0;i<data_dims[0];i++){
-				//	copy(data + data_dims[1]*i,data+data_dims[1]*(i+1)-1,weights_Matrix[i]);
-				//}
-				copy(data,data+data_dims[0]*data_dims[1],weights_Matrix[0]);
-                    
-
-				layers.insert_layer(*it, data_dims[0], data_dims[1], weights_Matrix, bias);			
 				
-				clearMemo<T>(weights_Matrix);
+				//insert dense layer
+				layers.insert_layer(*it, data_dims[0], data_dims[1], data, bias);							
                     
+				//reset values for next loop
 				data_rank=0;
                     bias_rank=0;
-               } else {
+               } 
+			else {
                     cout << " Initialize activiation layer : " << *it << endl;
                     layers.insert_layer(*it, ActType_t::TANH);               
                }
 
-               
                cout << " Layer " << *it << " is initialized. " <<endl <<endl;
           }
           
@@ -514,7 +488,8 @@ void runtester(const char* filename, const char* checkchar, T* input){
                 for(int ii=0; ii<outsize; ii++){
                     cout << (output[ii]) << "  " ;
                }         
-          } else {
+          } 
+		else {
                cout << " Final score ( first " << MAXSHOWRESULT/2 << " records ):" <<endl;
                for(int ii=0; ii<(MAXSHOWRESULT/2); ii++){
                     cout << (output[ii]) << "  " ;
@@ -526,8 +501,8 @@ void runtester(const char* filename, const char* checkchar, T* input){
           }
           cout << endl;        
           
-          
-     } catch (...){
+     } 
+	catch (...){
           if(bias!=NULL)       delete[] bias;
           if(bias_dims!=NULL)  delete[] bias_dims;
           if(data!=NULL)       delete[] data;
@@ -545,7 +520,6 @@ void runtester(const char* filename, const char* checkchar, T* input){
      file.close();
      return;
 }
-
 
 
 #endif

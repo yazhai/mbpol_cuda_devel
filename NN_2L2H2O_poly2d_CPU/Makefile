@@ -121,8 +121,11 @@ gfunction_generate.x: $(DEP)
 
 %.o: %.cpp 
 	$(HOST_COMPILER) $(INCLUDES) $(LIBRARIES) $(CCFLAGS) $(LDFLAGS)  -o $@ -c $<
-
-
+NN: utility.o 
+	g++ -I/usr/local/hdf5/include -L/usr/local/hdf5/lib -std=c++11 -O3 -lhdf5 -lhdf5_cpp -g -o net.out network.cpp
+NNCBLAS: utility.o 
+	g++ -I/usr/local/hdf5/include -L/usr/local/hdf5/lib -D_USE_GSL -std=c++11 -O3 -lhdf5 -lhdf5_cpp -lgslcblas -g -o netCBLAS.out utility.cpp network.cpp
+ 
 clean:
 	rm -rf *o
 	rm -f gfunction_generate.x
