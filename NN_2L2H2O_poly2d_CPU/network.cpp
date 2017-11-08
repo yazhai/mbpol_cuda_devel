@@ -10,6 +10,7 @@
 #include "utility.h"
 #include "network.h"
 #include "NN_2L2H2O_poly2d.in"   
+#include "timestamps.h"
 
 
 #define INFILE1     "32_2b_nn_single.hdf5"     // HDF5 files for different precisions
@@ -24,6 +25,12 @@
 #elif _USE_MKL
 #include <mkl_cblas.h>
 #endif
+
+
+//define openMP
+#ifdef _OPENMP
+#include <omp.h>
+#endif 
 
 
 using namespace std;
@@ -46,6 +53,10 @@ void network_t<double>::fullyConnectedForward(const Layer_t<double> & layer,
 
 		//store bias in dstData matrix(copy to each col) before computation
 		//dstData is transposed to fully utilize rowMajor storage
+
+		#ifdef _OPENMP
+          #pragma omp parallel for simd collapse(2) shared(dstData,layer)
+          #endif 
 		for(int i=0;i<output;i++)
 			for(int j=0;j<N;j++)
 				dstData[i][j] = layer.bias[i];
@@ -72,6 +83,9 @@ void network_t<float>::fullyConnectedForward(const Layer_t<float> & layer,
 
 		//store bias in dstData matrix(copy to each col) before computation
 		//dstData is transposed to fully utilize rowMajor storage
+		#ifdef _OPENMP
+          #pragma omp parallel for simd collapse(2) shared(dstData,layer)
+          #endif 
 		for(int i=0;i<output;i++)
 			for(int j=0;j<N;j++)
 				dstData[i][j] = layer.bias[i];
@@ -91,18 +105,30 @@ void network_t<float>::fullyConnectedForward(const Layer_t<float> & layer,
 int main(int argc, char** argv){ 
 
 	//oldTester();				//TO USE OLD TESETERS: make neural_net public in network.h file
-	//oldTester2();
+	//oldTester2();			//testers may be out of date
+
+	timers_t timers;
+	timerid_t id,id2;
+	timers.insert_random_timer( id, 0, "NN_singlePrecisionTime");
+	timers.insert_random_timer(id2,1,"NN_doublePrecisionTime");
+
 try{
      cout << " Run tester with single floating point precision : " <<endl;
+	timers.timer_start(id);
      runtester<float> (INFILE1, CHECKCHAR1, X[0]);
+	timers.timer_end(id);
      cout << endl << endl;
      cout << " ================================================= " <<endl << endl;
      cout << " Run tester with double floating point precision : " <<endl;
+	timers.timer_start(id2);
      runtester<double>(INFILE2, CHECKCHAR2, Y[0]);
+	timers.timer_end(id2);
      } catch (...) {
           exit(1);     
      }
-     exit(0);      
+	timers.get_all_timers_info();
+     timers.get_time_collections();     
+     exit(0); 
 	return 0;
 	
 }

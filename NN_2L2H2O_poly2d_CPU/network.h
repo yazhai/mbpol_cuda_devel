@@ -38,6 +38,10 @@
 //#include <gsl/gsl_cblas.h>
 #endif
 
+//define openMP
+#ifdef _OPENMP
+#include <omp.h>
+#endif 
 
 
 
@@ -166,18 +170,29 @@ public:
 			clearMemo<T>(dstData);	
 		}
 		init_mtx_in_mem<T>(dstData,output,N);
-	
-		//Conduct Matrix Multiplication, and Bias addition
-		for(int i=0;i<output;i++){
-			for(int j=0;j<N;j++){
-				dstData[i][j] = 0;
-				for(int k=0;k<input;k++){
-					dstData[i][j] += layer.weights[i][k]*srcData[N*k+j];
+		
+		//Conduct Matrix Multiplication
+		#ifdef _OPENMP
+          #pragma omp parallel for simd collapse(3) shared(dstData,srcData,layer)
+          #endif 
+		for(int i=0;i<input;i++){
+			for(int j=0;j<output;j++){
+				for (int k=0;k<N;k++){
+					dstData[j][k] += layer.weights[j][i]*srcData[N*i+k];
 				}
-				dstData[i][j] +=layer.bias[i];
 			}
 		}
 		
+		//Conduct Bias Addition
+		#ifdef _OPENMP
+          #pragma omp parallel for simd collapse(2) shared(dstData,layer)
+          #endif 
+		for(int i=0;i<output;i++){
+			for(int j=0;j<N;j++){
+				dstData[i][j] += layer.bias[i];
+			}
+		}
+
 		//update dimensions of input for next layer's use
 		input = output;
     	} 
