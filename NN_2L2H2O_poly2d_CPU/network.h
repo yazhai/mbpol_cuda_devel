@@ -172,13 +172,15 @@ public:
 		init_mtx_in_mem<T>(dstData,output,N);
 		
 		//Conduct Matrix Multiplication
-		#ifdef _OPENMP
-          #pragma omp parallel for simd collapse(3) shared(dstData,srcData,layer)
-          #endif 
-		for(int i=0;i<input;i++){
-			for(int j=0;j<output;j++){
-				for (int k=0;k<N;k++){
-					dstData[j][k] += layer.weights[j][i]*srcData[N*i+k];
+
+		int k=0;
+		for(int i=0;i<output;i++){
+			for(int j=0;j<input;j++){
+				#ifdef _OPENMP
+          		#pragma omp parallel for simd shared(dstData,srcData,layer)
+          		#endif 
+				for (k=0;k<N;k++){
+					dstData[i][k] += layer.weights[i][j]*srcData[N*j+k];
 				}
 			}
 		}
