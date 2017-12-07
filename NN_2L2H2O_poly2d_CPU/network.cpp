@@ -9,15 +9,19 @@
 
 #include "utility.h"
 #include "network.h"
-#include "NN_2L2H2O_poly2d.in"   
 #include "timestamps.h"
 
+#define INFILE_S 	"/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/NN_in_Single.in"	//Input Data, Single
+#define INFILE_D	"/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/NN_in_Double.in"	//Input Data, Double
 
-#define INFILE1     "32_2b_nn_single.hdf5"     // HDF5 files for different precisions
-#define INFILE2     "32_2b_nn_double.hdf5"
+#define INFILE1     "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/32_2b_nn_single.hdf5"     // HDF5 files for different precisions Layer Data
+#define INFILE2     "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/32_2b_nn_double.hdf5"
 #define CHECKCHAR1  "W"                 // dense_1_[W]           for "W"
 #define CHECKCHAR2  "l"                 // dense_1/kerne[l]      for "l"
 
+//input file parameters
+#define SAMPLECOUNT 11                  // input sample count(N)
+#define SAMPLEDIM   69                  // each input sample's dim(input) 
 
 // Define the cblas library 
 #ifdef _USE_GSL
@@ -37,6 +41,7 @@ using namespace std;
 
 
 //cblas implementations of double and single precision forward dense layer
+//Input and layer.Weights already transposed for optimal row-major computation.
 #if defined (_USE_GSL) || defined (_USE_MKL)
 template <>
 void network_t<double>::fullyConnectedForward(const Layer_t<double> & layer,
@@ -54,10 +59,10 @@ void network_t<double>::fullyConnectedForward(const Layer_t<double> & layer,
 		//store bias in dstData matrix(copy to each col) before computation
 		//dstData is transposed to fully utilize rowMajor storage
 
-		#ifdef _OPENMP
-          #pragma omp parallel for simd collapse(2) shared(dstData,layer)
-          #endif 
 		for(int i=0;i<output;i++)
+			#ifdef _OPENMP
+          	#pragma omp parallel for simd shared(dstData,layer)
+          	#endif 
 			for(int j=0;j<N;j++)
 				dstData[i][j] = layer.bias[i];
 		
@@ -83,10 +88,10 @@ void network_t<float>::fullyConnectedForward(const Layer_t<float> & layer,
 
 		//store bias in dstData matrix(copy to each col) before computation
 		//dstData is transposed to fully utilize rowMajor storage
-		#ifdef _OPENMP
-          #pragma omp parallel for simd collapse(2) shared(dstData,layer)
-          #endif 
 		for(int i=0;i<output;i++)
+			#ifdef _OPENMP
+          	#pragma omp parallel for simd shared(dstData,layer)
+          	#endif 
 			for(int j=0;j<N;j++)
 				dstData[i][j] = layer.bias[i];
 
@@ -100,32 +105,43 @@ void network_t<float>::fullyConnectedForward(const Layer_t<float> & layer,
 #endif
 
 
-
 /*TESTER*/
+/*
 int main(int argc, char** argv){ 
 
 	//oldTester();				//TO USE OLD TESETERS: make neural_net public in network.h file
 	//oldTester2();			//testers may be out of date
 
+	//Timers for benchmarking
 	timers_t timers;
 	timerid_t id,id2;
 	timers.insert_random_timer( id, 0, "NN_singlePrecisionTime");
 	timers.insert_random_timer(id2,1,"NN_doublePrecisionTime");
 
+	float ** X = nullptr;
+	double ** Y = nullptr;
+	size_t sampleCount_Single = 1;
+	size_t sampleCount_Double = 1;
+	size_t sampleDim_Single =1;
+	size_t sampleDim_Double = 1;
+	read2DArray_with_max_thredhold<float>(X, sampleCount_Single, sampleDim_Single, INFILE_S, 1);
+	read2DArray_with_max_thredhold<double>(Y,sampleCount_Double,sampleDim_Double,INFILE_D,1);
 try{
      cout << " Run tester with single floating point precision : " <<endl;
 	timers.timer_start(id);
-     runtester<float> (INFILE1, CHECKCHAR1, X[0]);
+     runtester<float> (INFILE1, CHECKCHAR1, X[0],sampleCount_Single,sampleDim_Single);
 	timers.timer_end(id);
      cout << endl << endl;
      cout << " ================================================= " <<endl << endl;
      cout << " Run tester with double floating point precision : " <<endl;
 	timers.timer_start(id2);
-     runtester<double>(INFILE2, CHECKCHAR2, Y[0]);
+     runtester<double>(INFILE2, CHECKCHAR2, Y[0],sampleCount_Double,sampleDim_Double);
 	timers.timer_end(id2);
      } catch (...) {
           exit(1);     
      }
+	
+	//get Times
 	timers.get_all_timers_info();
      timers.get_time_collections();     
      exit(0); 
@@ -133,7 +149,7 @@ try{
 	
 }
 
-
+*/
 
 
 /*

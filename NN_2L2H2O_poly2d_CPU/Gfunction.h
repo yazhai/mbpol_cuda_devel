@@ -9,9 +9,8 @@
 
 #include "readGparams.h"
 #include "atomTypeID.h"
-
 #include "timestamps.h"
-
+#include "xyzData.h"
 
 // Define the cblas library 
 #ifdef _USE_GSL
@@ -204,6 +203,7 @@ size_t natom;                 // Number of atoms registered in the model
 idx_t** colidx;              // distance matrix column index mapping
 
 T** dist, ** distT;      // distance matrix and transpose
+T** xyz;				//xyz data of atoms
 size_t ndimers, ndistcols;    // number of dimers, number of columns in distance matrix
 
 Gparams_t<T> GP;                 // G-fn paramter class
@@ -227,13 +227,15 @@ Gfunction_t(){
      colidx = nullptr;
      dist = nullptr;
      distT = nullptr;
+	xyz = nullptr;
 };
 
 
 ~Gfunction_t(){
      clearMemo<idx_t>(colidx);
      clearMemo<T>(dist);
-     clearMemo<T>(distT);     
+     clearMemo<T>(distT);
+	clearMemo<T>(xyz);     
      for(auto it=G.begin() ; it!=G.end(); it++){
           clearMemo<T>(it->second);
      };
@@ -271,7 +273,6 @@ Gfunction_t(){
 //};
 
 
-
 // load distance matrix and filt out samples that exceed a maximum value
 void load_distfile(const char* _distfile, int _titleline=0, int _thredhold_col=0, T thredhold_max=std::numeric_limits<T>::min()){
      timers.insert_random_timer( id, 0, "Read_distance_file");
@@ -287,6 +288,23 @@ void load_distfile(const char* _distfile, int _titleline=0, int _thredhold_col=0
     //std::cout << " READ in count of dimers = " << ndimers << std::endl;
 };
 
+void load_distFileFromXYZ(const char* _xyzFile){
+	
+	getDist(xyz, _xyzFile, dist, ndimers, ndistcols, 9);			//9 is specific to 9 atoms test -- TODO: change
+	std::cout<<"ndimers: " << ndimers << std::endl;
+	std::cout<<"ndistcols: "<< ndistcols<<std::endl;
+	
+	std::ofstream distOut;
+	distOut.open("deleteMe");
+	for(int i=0;i<ndimers;i++){
+		for(int j=0;j<ndistcols;j++){
+			distOut<<std::setprecision(18)<<std::scientific<<dist[i][j]<<" ";
+		}
+	distOut<<std::endl;
+	}
+	distOut.close();
+	transpose_mtx<T>(distT, dist, ndimers, ndistcols); 
+}
 
 
 // load distance matrix column index 
@@ -490,7 +508,7 @@ void make_G(){
 
 void make_G(const char* _distfile, int _titleline, const char* _colidxfile, const char* _paramfile, const char* _ordfile, int _thredhold_col=0, T thredhold_max=std::numeric_limits<T>::min()){     
 
-     load_distfile(_distfile, _titleline, _thredhold_col, thredhold_max);     
+     load_distfile(_distfile, _titleline, _thredhold_col, thredhold_max);  
 
      load_dist_colidx(_colidxfile);
 
@@ -501,7 +519,18 @@ void make_G(const char* _distfile, int _titleline, const char* _colidxfile, cons
      make_G();
 }
 
+void make_G(const char* _xyzFile, const char* _colidxfile, const char * _paramfile, const char* _ordfile){
+	
+	load_distFileFromXYZ(_xyzFile);
 
+	load_dist_colidx(_colidxfile);
+
+     load_paramfile(_paramfile);
+
+     load_seq(_ordfile);         
+
+     make_G();
+}
 
 
 

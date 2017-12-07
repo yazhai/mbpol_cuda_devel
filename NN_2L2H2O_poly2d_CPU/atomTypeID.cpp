@@ -177,18 +177,27 @@ idx_t atom_Type_ID_t::find_atom_idx_by_name(std::string _name){
 //   between [atom1] and [atom2].
 // So that _idxary[atom1][atom2] = _idxary[atom2][atom1]
 void atom_Type_ID_t::load_default_atom_id(idx_t**& _idxary, size_t _size){
-     insert_atom("H1(a)", "H");
+     /*insert_atom("H1(a)", "H");
      insert_atom("H2(a)", "H");
      insert_atom("H1(b)", "H");
      insert_atom("H2(b)", "H");
      insert_atom("O(a)", "O");
      insert_atom("O(b)", "O");
-     
+     */
+	insert_atom("O(a)", "O");
+	insert_atom("H1(a)","H");
+	insert_atom("H2(a)","H");
+	insert_atom("O(b)", "O");
+	insert_atom("H1(b)","H");
+	insert_atom("H2(b)","H");
+	insert_atom("O(c)", "O");
+	insert_atom("H1(c)","H");
+	insert_atom("H2(c)","H");
      
      // The sequence of the pairs in the vector indicates the column index 
      // in distance matrix array
      vector< pair<string, string> > mappings;
-     mappings.push_back(std::make_pair("H1(a)","H2(a)"));
+/* 	mappings.push_back(std::make_pair("H1(a)","H2(a)"));
      mappings.push_back(std::make_pair("H1(b)","H2(b)"));
      mappings.push_back(std::make_pair("O(a)","H1(a)"));
      mappings.push_back(std::make_pair("O(a)","H2(a)"));
@@ -203,7 +212,46 @@ void atom_Type_ID_t::load_default_atom_id(idx_t**& _idxary, size_t _size){
      mappings.push_back(std::make_pair("O(b)","H1(a)"));
      mappings.push_back(std::make_pair("O(b)","H2(a)"));
      mappings.push_back(std::make_pair("O(a)","O(b)"));
-     
+*/
+
+	mappings.push_back(std::make_pair("O(a)","H1(a)"));
+	mappings.push_back(std::make_pair("O(a)","H2(a)"));
+	mappings.push_back(std::make_pair("O(a)","O(b)"));
+	mappings.push_back(std::make_pair("O(a)","H1(b)"));
+	mappings.push_back(std::make_pair("O(a)","H2(b)"));
+	mappings.push_back(std::make_pair("O(a)","O(c)"));
+	mappings.push_back(std::make_pair("O(a)","H1(c)"));
+	mappings.push_back(std::make_pair("O(a)","H2(c)"));
+	mappings.push_back(std::make_pair("H1(a)","H2(a)"));
+	mappings.push_back(std::make_pair("H1(a)","O(b)"));
+	mappings.push_back(std::make_pair("H1(a)","H1(b)"));
+	mappings.push_back(std::make_pair("H1(a)","H2(b)"));
+	mappings.push_back(std::make_pair("H1(a)","O(c)"));
+	mappings.push_back(std::make_pair("H1(a)","H1(c)"));
+	mappings.push_back(std::make_pair("H1(a)","H2(c)"));
+	mappings.push_back(std::make_pair("H2(a)","O(b)"));
+	mappings.push_back(std::make_pair("H2(a)","H1(b)"));
+	mappings.push_back(std::make_pair("H2(a)","H2(b)"));
+	mappings.push_back(std::make_pair("H2(a)","O(c)"));
+	mappings.push_back(std::make_pair("H2(a)","H1(c)"));
+	mappings.push_back(std::make_pair("H2(a)","H2(c)"));
+	mappings.push_back(std::make_pair("O(b)","H1(b)"));
+	mappings.push_back(std::make_pair("O(b)","H2(b)"));
+	mappings.push_back(std::make_pair("O(b)","O(c)"));
+	mappings.push_back(std::make_pair("O(b)","H1(c)"));
+	mappings.push_back(std::make_pair("O(b)","H2(c)"));
+	mappings.push_back(std::make_pair("H1(b)","H2(b)"));
+	mappings.push_back(std::make_pair("H1(b)","O(c)"));
+	mappings.push_back(std::make_pair("H1(b)","H1(c)"));
+	mappings.push_back(std::make_pair("H1(b)","H2(c)"));
+	mappings.push_back(std::make_pair("H2(b)","O(c)"));
+	mappings.push_back(std::make_pair("H2(b)","H1(c)"));
+	mappings.push_back(std::make_pair("H2(b)","H2(c)"));
+	mappings.push_back(std::make_pair("O(c)","H1(c)"));
+	mappings.push_back(std::make_pair("O(c)","H2(c)"));
+	mappings.push_back(std::make_pair("H1(c)","H2(c)"));
+	
+
      
      _size = atoms.size();
 

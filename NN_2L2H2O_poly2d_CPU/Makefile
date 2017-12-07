@@ -101,6 +101,9 @@ else
 
 endif
 
+ifdef USE_HDF5
+	LDFLAGS += -lhdf5 -lhdf5_cpp 
+endif
 
 # NVCC flags
 NVCCFLAGS := -Wno-deprecated-gpu-targets
@@ -114,6 +117,8 @@ all: clean build
 build: gfunction_generate.x
 
 DEP= tester.o Gfunction.o utility.o atomTypeID.o readGparams.o timestamps.o
+DEPNN= utility.o timestamps.o network.o
+DEPFULL=  fullTester.o Gfunction.o utility.o atomTypeID.o readGparams.o timestamps.o network.o 
 
 gfunction_generate.x: $(DEP)
 	$(HOST_COMPILER) $(INCLUDES) $(LIBRARIES) $(LINKOPT) $(CCFLAGS) $(LDFLAGS)  -o $@ $+
@@ -121,11 +126,20 @@ gfunction_generate.x: $(DEP)
 
 %.o: %.cpp 
 	$(HOST_COMPILER) $(INCLUDES) $(LIBRARIES) $(CCFLAGS) $(LDFLAGS)  -o $@ -c $<
-NN: network.cpp utility.o timestamps.o 
-	g++ -I/usr/local/hdf5/include -L/usr/local/hdf5/lib -std=c++11 -fopenmp -O3 -lhdf5 -lhdf5_cpp -g -o net.out timestamps.cpp network.cpp
-NNCBLAS: utility.o 
-	g++ -I/usr/local/hdf5/include -L/usr/local/hdf5/lib -D_USE_GSL -fopenmp -std=c++11 -O3 -lhdf5 -lhdf5_cpp -lgslcblas -g -o netCBLAS.out utility.cpp timestamps.cpp network.cpp
+#NN: network.o utility.o timestamps.o 
+#	$(HOST_COMPILER) -std=c++11  -I/server-home1/ndanande/local/hdf5_new/include -L/server-home1/ndanande/local/hdf5/lib  -lhdf5 -lhdf5_cpp -fopenmp -O3 -o net.out -Wl, --verbose 
+#NN:  network.o
+	#$(HOST_COMPILER) -std=c++11 -lhdf5 -lhdf5_cpp -O3 -o net.out network.cpp -pg utility.cpp timestamps.cpp
+NN.x: $(DEPNN)
+	$(HOST_COMPILER) $(INCLUDES) $(LIBRARIES) $(LINKOPT) $(CCFLAGS) $(LDFLAGS) -o $@ $+
+
+Full.x: $(DEPFULL)
+	$(HOST_COMPILER) $(INCLUDES) $(LIBRARIES) $(LINKOPT) $(CCFLAGS) $(LDFLAGS) -o $@ $+
+ 
+
 clean:
 	rm -rf *o
 	rm -f gfunction_generate.x
+	rm -f NN.x
+	rm -f Full.x
 

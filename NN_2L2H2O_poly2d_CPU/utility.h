@@ -201,8 +201,9 @@ int read2DArray_with_max_thredhold(T** & data, size_t& rows, size_t& cols, const
                char* p = &line[0u];
                char* end;              
                onelinedata.clear();                              
+			
                for( T d = strtod(p, &end); p != end; d = strtod(p, &end) ) {
-                    p = end;                    
+                    p = end;                  
                     onelinedata.push_back(d);           
                };               
                if (onelinedata.size()>0) {   
@@ -214,7 +215,7 @@ int read2DArray_with_max_thredhold(T** & data, size_t& rows, size_t& cols, const
                          // when thredhold_index is negative, check the column from the end VS max
                          checkcol += thredhold_col;                                        
                     }                         
-                    if (onelinedata[thredhold_col] > thredhold_max) {
+                    if (onelinedata[checkcol] > thredhold_max) {
                          continue;  // If the data exceeds thredhold, ignore this line.
                     }
                     mtx.push_back(onelinedata);                               
@@ -299,13 +300,17 @@ void get_max_each_row(T*& rst,  T* src,  size_t src_rows, size_t src_cols, long 
           #ifdef _OPENMP
           #pragma omp parallel for simd shared(src, rst, src_rows, src_cols, col_start, col_end)
           #endif   
+		int idxlast = 0;
           for(size_t ii=0 ; ii< src_rows ; ii++ ){
                for(size_t jj=col_start; jj<= col_end ; jj++){
-                    if ( rst[ii] < abs(src[ii*src_cols + jj]) ) {
-                         rst[ii] = abs(src[ii*src_cols + jj]);
+                    if ( rst[ii] < fabs(src[ii*src_cols + jj]) ) {
+                         rst[ii] = fabs(src[ii*src_cols + jj]);
+					if(ii==(src_rows-1)){
+						idxlast = jj;
+					}
                     };
                }
-          };     
+          };  
 };
 
 
@@ -326,7 +331,7 @@ void norm_rows_in_mtx_by_col_vector(T* src_mtx, size_t src_rows, size_t src_cols
      #ifdef _OPENMP
      #pragma omp parallel for simd shared(src_mtx, src_rows, src_cols, scale_vec, col_start, col_end)
      #endif
-     for(int i = 0; i< src_rows; i++){     
+     for(int i = 0; i< src_rows; i++){  
           T scale = 1 / scale_vec[i];
           for(int j=col_start; j<= col_end; j++){
                src_mtx[src_cols*i + j] = src_mtx[src_cols*i + j] * scale ;

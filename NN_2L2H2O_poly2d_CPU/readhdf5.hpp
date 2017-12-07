@@ -1,5 +1,5 @@
-#if !defined(_READHDF5_H_)
-#define _READHDF5_H_
+#ifndef READHDF5_H
+#define READHDF5_H
 
 
 
@@ -139,7 +139,7 @@ void Read_Layer_Data_By_DatName (H5File file, const char* name, T* & data_out, h
 
 
 // Function to read out group attribute (saving the list of all layer_names and weight names) from a HDF5 file 
-vector<string> Read_Attr_Data_By_Seq (H5File file, const char* path, const char* _attr){
+inline vector<string> Read_Attr_Data_By_Seq (H5File file, const char* path, const char* _attr){
 /*
      file      : the opened H5File
      path      : path () to the group
@@ -233,7 +233,7 @@ vector<string> Read_Attr_Data_By_Seq (H5File file, const char* path, const char*
 
 
 // concat two string for a path
-string mkpath(string _a, string _b){
+inline string mkpath(string _a, string _b){
      string finalstring;
      
      // check if _a ends with "/" , or _b starts with "/" .

@@ -89,7 +89,7 @@ int main(int argc, char** argv){
      
      
      // Show results on test data set
-     if ( !strcmp(argv[1] , "tester.in") ) {
+     if (!strcmp(argv[1] , "tester.in") ) {
           cout << endl;
           cout << "Output tester results for accuracy checking:" << endl;          
           cout.precision(std::numeric_limits<double>::digits10+1);            
@@ -97,15 +97,51 @@ int main(int argc, char** argv){
                string atom         = gf.model.atoms[it->first]->name;
                string atom_type    = gf.model.atoms[it->first]->type;
                cout << " G-fn : " << atom << " = " << endl;          
-               for(int ii=0; ii<3; ii++){
+               for(int ii=0; ii<100; ii++){
                     for(int jj=0; jj<gf.G_param_max_size[atom_type]; jj++){
-                         if ((jj>0)&&( jj%3 ==0 ) ) cout << endl;
+                         if ((jj>0)&&( jj%7 ==0 ) ) cout << endl;
                          cout << scientific << it->second[jj][ii] << " " ;                       
                     }
                cout << endl;
                }               
           }
+
      }
+	else if( !strcmp(argv[1], "NN_input_2LHO_correctedD6_f64.dat") ){
+		cout<<endl;
+		cout<<"Output for NN input test:"<<endl;
+		cout.precision(std::numeric_limits<double>::digits10+1);
+		for(auto it=gf.G.begin(); it!= gf.G.end(); it++){
+		cout<<"NUM DIMERS "<< gf.ndimers<<endl;
+		string atom = gf.model.atoms[it->first]->name;
+		string atom_type = gf.model.atoms[it->first]->type;
+		cout << " G-fn : " << atom << " = " << endl;
+		for(int ii=0; ii<42508;ii++){
+          	for(int jj=0; jj<gf.G_param_max_size[atom_type]; jj++){
+                    if ((jj>0)&&( jj%3 ==0 ) ) cout << endl;
+                    cout << scientific << it->second[jj][ii] << " " ;                       
+               }
+               cout << endl;
+               }               
+          }
+		
+	}
+	else if( !strcmp(argv[1], "distancesNew")){
+		ofstream outputFiles;
+		for(auto it=gf.G.begin(); it!= gf.G.end(); it++){
+			string atom = gf.model.atoms[it->first]->name;
+			string atom_type = gf.model.atoms[it->first]->type;
+			string filePath = "./myGfuncOut/" + atom;
+			outputFiles.open(filePath, ofstream::out | ofstream::trunc);
+			for(int ii=0;ii<gf.ndimers;ii++){
+				for(int jj=0;jj<gf.G_param_max_size[atom_type];jj++){
+					outputFiles<<setprecision(18)<<scientific<<it->second[jj][ii] << " ";
+				}
+				outputFiles<<endl;
+			}
+			outputFiles.close();
+		}
+	}
     
      return 0;
 }

@@ -7,15 +7,17 @@
 ##   (2nd line) H O O
 ##   (3rd line) H O 
 ## Then the G_function matrix will be constructed in [HH - HOO - HO] sequence. 
-##
+
 
 H H
-#H O
-#H O O
+H O
+H O O
 H H O
-#H H H
-#O H
-#O O
-#O H O
-#O H H
+H H H
+O H
+O O
+O O O
+O H O
+O H H
+
 
