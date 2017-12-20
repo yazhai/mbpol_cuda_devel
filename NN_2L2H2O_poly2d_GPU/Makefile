@@ -7,8 +7,6 @@
 
 # Location of the CUDA/CUDNN Toolkit
 CUDA_PATH      ?= /usr/local/cuda
-CUDNN_PATH     ?= $(CUDA_PATH)
-HDF5_PATH      ?= ${HDF5_LOCAL}
 
 # architecture
 HOST_ARCH      := $(shell uname -m)
@@ -21,35 +19,38 @@ NVCC           := $(CUDA_PATH)/bin/nvcc -ccbin $(HOST_COMPILER)
 
 # flags
 CCFLAGS   := -std=c++11 -O3
-NVCCFLAGS := -Wno-deprecated-gpu-targets
-LDFLAGS   := -lcudnn -lcublas -lhdf5 -lhdf5_cpp
+NVCCFLAGS := -Wno-deprecated-gpu-targets  
+LDFLAGS   := -lcublas
 
 
 # include paths
-INCLUDES  := -I$(CUDNN_PATH)/include
 INCLUDES  += -I$(CUDA_PATH)/include
-INCLUDES  += -I$(HDF5_PATH)/include
-
-LIBRARIES := -L$(CUDNN_PATH)/lib64
 LIBRARIES += -L$(CUDA_PATH)/lib64
-LIBRARIES += -L$(HDF5_PATH)/lib
+
 
 
 #=====================================================================
 #
 # Target rules
+EXE = gfn
+OBJ = atomTypeID.o Gfunction_cu.o readGparams.o timestamps.o utility.o utility_cu.o
+
+
 all: clean build
 
-build: NN_2L2H2O_poly2d NN_2L2H2O_poly2d_benchmarking
+build: $(EXE)
 
-%: %.cu 
-	$(NVCC) $(INCLUDES) $(LIBRARIES) $(NVCCFLAGS) $(CCFLAGS) $(LDFLAGS) -o $@ $<
+
+$(EXE): $(OBJ)
+	$(NVCC) -o $@ $(OBJ) $(CCFLAGS) $(NVCCFLAGS)  $(LDFLAGS) 
+
+%.o: %.cu 
+	$(NVCC) $(INCLUDES) $(LIBRARIES) $(NVCCFLAGS) $(CCFLAGS) $(LDFLAGS) -o $@ -c $<
 	
-#%.o: %.hpp 
-#	$(HOST_COMPILER) $(CCFLAGS) $(LDFLAGS) -o $@ -c $<
-		
-	
+%.o: %.cpp 
+	$(HOST_COMPILER) $(CCFLAGS) -o $@ -c $<
+				
 clean:
-	rm -rf *o
-	rm -f NN_2L2H2O_poly2d NN_2L2H2O_poly2d_benchmarking
+	rm -rf *.o
+	rm -f gfn
 	

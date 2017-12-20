@@ -26,6 +26,7 @@ const char* FLAG_DISTFILE_HEADLINE = "distheadline" ;
 const char* FLAG_COLUMN_INDEX_FILE =   "columnfile" ;
 const char* FLAG_PARAM_FILE        =    "paramfile" ;
 const char* FLAG_ATOM_ORDER_FILE   =      "ordfile" ;
+const char* FLAG_CUDA_DEVICE_INDEX =       "device" ;
 
 
 const int THREDHOLD_COL = -1;
@@ -118,10 +119,11 @@ int main(int argc, char** argv){
           << "[-" << FLAG_COLUMN_INDEX_FILE  << "=NONE]"  
           << "[-" << FLAG_PARAM_FILE         << "=H_rad|H_ang|O_rad|O_ang]"
           << "[-" << FLAG_ATOM_ORDER_FILE    << "=NONE]"
+          << "[-" << FLAG_CUDA_DEVICE_INDEX  << "=0]"
           << endl << endl;
 
-
-     checkCudaErrors( cudaSetDevice(1) );
+     int device = getCmdLineArgumentInt(argc, (const char **)argv, FLAG_CUDA_DEVICE_INDEX);     
+     checkCudaErrors( cudaSetDevice(device) );
      currCuda.update();
      cublas_start();
 
