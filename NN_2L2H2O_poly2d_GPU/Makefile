@@ -42,7 +42,7 @@ build: $(EXE)
 
 
 $(EXE): $(OBJ)
-	$(NVCC) -o $@ $(OBJ) $(CCFLAGS) $(NVCCFLAGS)  $(LDFLAGS) 
+	$(NVCC) -o $@ $? $(CCFLAGS) $(NVCCFLAGS)  $(LDFLAGS) 
 
 %.o: %.cu 
 	$(NVCC) $(INCLUDES) $(LIBRARIES) $(NVCCFLAGS) $(CCFLAGS) $(LDFLAGS) -o $@ -c $<
