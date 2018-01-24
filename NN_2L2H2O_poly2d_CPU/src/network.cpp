@@ -11,13 +11,13 @@
 #include "network.h"
 #include "timestamps.h"
 
-#define INFILE_S 	"/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/NN_in_Single.in"	//Input Data, Single
-#define INFILE_D	"/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/NN_in_Double.in"	//Input Data, Double
-
-#define INFILE1     "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/32_2b_nn_single.hdf5"     // HDF5 files for different precisions Layer Data
-#define INFILE2     "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/32_2b_nn_double.hdf5"
-#define CHECKCHAR1  "W"                 // dense_1_[W]           for "W"
-#define CHECKCHAR2  "l"                 // dense_1/kerne[l]      for "l"
+//old implementation
+//#define INFILE_S 	"/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/NN_in_Single.in"	//Input Data, Single
+//#define INFILE_D	"/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/NN_in_Double.in"	//Input Data, Double
+//#define INFILE1     "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/32_2b_nn_single.hdf5"     // HDF5 files for different precisions Layer Data
+//#define INFILE2     "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/32_2b_nn_double.hdf5"
+//#define CHECKCHAR1  "W"                 // dense_1_[W]           for "W"
+//#define CHECKCHAR2  "l"                 // dense_1/kerne[l]      for "l"
 
 //input file parameters
 #define SAMPLECOUNT 11                  // input sample count(N)

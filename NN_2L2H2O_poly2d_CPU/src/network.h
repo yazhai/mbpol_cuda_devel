@@ -554,7 +554,7 @@ void runtester(const char* filename, const char* checkchar, T** input, size_t nu
 		for(int ii=0;ii<numAtoms;ii++){
 
 			//check if this input is hydrogen or oxygen based on the sampleDim ( input count)
-			if(sampleDim[ii] == 56){
+			if(sampleDim[ii] == 84){
 				//this is a hydrogen atom
 				currentNet = & layers_2;
 				cout<<"USING HYDROGEN NET Input Dimension: "<< sampleDim[ii] << " N: " <<sampleCount<<endl;
@@ -618,6 +618,11 @@ void runtester(const char* filename, const char* checkchar, T** input, size_t nu
           	cout << endl;     
 		}
   
+		//energy conversion: 1 kcal/mol = .0433634 eV
+		for(int a = 0;a<outsize;a++){
+			finalOutput[a]*= ((6.0)/(.0433634));
+		}
+		
           cout<<":::::::::::::::::::: FINAL OUTPUT::::::::::::::::: " <<endl;
 		if (outsize <= MAXSHOWRESULT){
                cout << endl << " Final Final score are :" <<endl;            

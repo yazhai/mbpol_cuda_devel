@@ -19,14 +19,14 @@
 #include "Gfunction.h"
 #include "network.h"
 
-#define INFILE1     "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/16.hdf5"     // HDF5 files for Layer Data
+#define INFILE1     "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/34.hdf5"     // HDF5 files for Layer Data
 
 //possible last chars of weight data(used to differentiate between weights and biases)
 #define CHECKCHAR1  "W"                 // dense_1_[W]           for "W"
 #define CHECKCHAR2  "l"                 // dense_1/kerne[l]      for "l"
 
 //percentage of gfn output data used in training(and not in testing)
-#define TRAIN_PERCENT 0.9
+#define TRAIN_PERCENT 0
 
 //define openMP
 #ifdef _OPENMP
@@ -78,7 +78,7 @@ int main(int argc, char** argv){
      gf.make_G_XYZ(argv[1],colidxfile.c_str(), paramfile.c_str(), ordfile.c_str());
 
      // normalize G by the maximum value of first 90% dimers
-     gf.norm_G_by_maxabs_in_first_percent(TRAIN_PERCENT);    
+     //gf.norm_G_by_maxabs_in_first_percent(TRAIN_PERCENT);    
      // results saved in gf.G which is a map<string:atom_idx, double**>
      
 	//define number of samples
@@ -126,7 +126,7 @@ int main(int argc, char** argv){
 			gfuncOut.open(gfuncOutPath);
 			for(int j=0;j<gf.ndimers;j++){
 				for(int k=0;k<inputDim[i];k++){
-					gfuncOut<<it->second[k][j]<<" ";
+					gfuncOut<<setprecision(18)<<scientific<<it->second[k][j]<<" ";
 				}
 				gfuncOut<<endl;
 			}

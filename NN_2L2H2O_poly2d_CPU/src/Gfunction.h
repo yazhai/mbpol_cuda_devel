@@ -55,7 +55,7 @@ T cutoff(T R, T R_cut=10) {
         t = (t-1) / (t+1);                
         f = t * t * t ;        
     }
-    return f  ;
+    return 1 ;
 }
 
 
@@ -289,9 +289,18 @@ void load_distfile(const char* _distfile, int _titleline=0, int _thredhold_col=0
 };
 
 void load_distFileFromXYZ(const char* _xyzFile){
+	std::ofstream outputFile;
+	outputFile.open("distances.dat");
 	
-											//9 is specific to 9 atoms test -- TODO: change
-	getDist(xyz,_xyzFile,distT, ndistcols,ndimers,9);
+										//9 is specific to 9 atoms test -- TODO: change, getrid of distance output
+	getDist(xyz,_xyzFile,distT, ndistcols,ndimers,6);
+	for(int j = 0; j<ndimers;j++){
+				for(int k=0;k<ndistcols;k++){
+					outputFile<<distT[k][j]<<" ";
+				}
+				outputFile<<std::endl;
+			}
+	outputFile.close();
 	std::cout<<"ndimers: " << ndimers << std::endl;
 	std::cout<<"ndistcols: "<< ndistcols<<std::endl;
 	
@@ -349,13 +358,6 @@ void load_seq(const char* _seqfile){
           GP.make_seq_default();
      }
 };
-
-
-
-
-
-
-
 
 
 
@@ -488,7 +490,23 @@ void make_G(){
           }
      }
      
-     
+	//scale by max_per_feature(from files) -- cutoff replacement
+	T ** max = nullptr;
+	size_t rows,cols;
+	int index = 0;
+     for (auto it = G.begin(); it != G.end(); it++){
+		std::string fileName = "./max_per_feature/" + model.atoms[it->first]->type + std::to_string(index) + "_max";	
+		read2DArrayfile(max, rows, cols, fileName.c_str());
+
+		for(int N = 0; N<ndimers;N++){
+			for(int j = 0; j<rows;j++){
+				it->second[j][N]/=max[j][0];
+			}
+		}	
+		index++;
+	}
+
+	
      timers.timer_end(id3);
      timers.get_all_timers_info();
      timers.get_time_collections();
