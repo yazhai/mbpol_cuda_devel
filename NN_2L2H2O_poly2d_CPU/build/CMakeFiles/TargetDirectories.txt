@@ -1,2 +1,0 @@
-/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/build/CMakeFiles/Full_NN.dir
-/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/build/CMakeFiles/cleanAll.dir

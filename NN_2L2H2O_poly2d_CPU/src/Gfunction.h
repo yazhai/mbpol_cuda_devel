@@ -10,7 +10,7 @@
 #include "readGparams.h"
 #include "atomTypeID.h"
 #include "timestamps.h"
-#include "xyzData.h"
+#include "atomTypeID_v2.h"
 
 // Define the cblas library 
 #ifdef _USE_GSL
@@ -189,7 +189,6 @@ void get_Gangular_add(T* rst, T* Rij, T* Rik, T* Rjk, size_t n, T eta, T zeta, T
 
 
 
-
 // Timers for benchmarking
 timers_t timers;
 timerid_t id, id1, id2 , id3;
@@ -198,6 +197,7 @@ timerid_t id, id1, id2 , id3;
 public:
 
 // Variables:
+atom_Type_ID_t2 <T> model2;		//test model to eventually switch over
 atom_Type_ID_t model;         // Model, save information about atom names, indexes, and types
 size_t natom;                 // Number of atoms registered in the model
 idx_t** colidx;              // distance matrix column index mapping
@@ -273,6 +273,47 @@ Gfunction_t(){
 //};
 
 
+T calcDistance(T* atom1, T* atom2){
+	T diff[3] = {atom1[0]-atom2[0], atom1[1]-atom2[1], atom1[2] - atom2[2]};
+	return sqrt(diff[0]*diff[0] + diff[1]*diff[1] + diff[2]*diff[2]);
+}
+
+void load_distFromXYZ(const char* xyzFile){
+	
+	//get xyzData and the number of coordinates from file	
+	model2.load_xyz(xyzFile);
+	//rows = # of trimers ( or other groups of atoms)
+	//cols = # of distances that must be calculated between all atoms that belong to the group
+	//distRows = xyzRows/numAtoms;
+	//distCols = (size_t)(numAtoms*(numAtoms-1)/2);
+	//init_mtx_in_mem<T>(distData,distRows,distCols);
+
+	natom = model2.NATOM;
+	ndimers = model2.NPAIR;
+	ndistcols = (size_t)(natom*(natom-1)/2);
+	init_mtx_in_mem<T>(distT,ndistcols,ndimers);
+
+	//Calculate Distances from XYZ coordinates
+	int currentIndex = 0;
+	for(int ii=0;ii<natom;ii++){
+		for(int jj=ii+1;jj<natom;jj++){
+			#ifdef _OPENMP
+			#pragma omp parallel for simd shared(ndimers,distT,currentIndex,model2.XYZ,natom,ii,jj)
+			#endif
+			for(int N=0;N<ndimers;N++){
+				distT[currentIndex][N] = calcDistance(&(model2.XYZ[N][3*ii]), &(model2.XYZ[N][3*jj]));
+			}
+			currentIndex++;
+		}
+	}
+}
+
+
+
+
+
+
+
 // load distance matrix and filt out samples that exceed a maximum value
 void load_distfile(const char* _distfile, int _titleline=0, int _thredhold_col=0, T thredhold_max=std::numeric_limits<T>::min()){
      timers.insert_random_timer( id, 0, "Read_distance_file");
@@ -288,12 +329,13 @@ void load_distfile(const char* _distfile, int _titleline=0, int _thredhold_col=0
     //std::cout << " READ in count of dimers = " << ndimers << std::endl;
 };
 
+/*
 void load_distFileFromXYZ(const char* _xyzFile){
 	std::ofstream outputFile;
 	outputFile.open("distances.dat");
 	
 										//9 is specific to 9 atoms test -- TODO: change, getrid of distance output
-	getDist(xyz,_xyzFile,distT, ndistcols,ndimers,6);
+	getDistFromXYZ(_xyzFile);
 	for(int j = 0; j<ndimers;j++){
 				for(int k=0;k<ndistcols;k++){
 					outputFile<<distT[k][j]<<" ";
@@ -305,7 +347,7 @@ void load_distFileFromXYZ(const char* _xyzFile){
 	std::cout<<"ndistcols: "<< ndistcols<<std::endl;
 	
 }
-
+*/
 
 // load distance matrix column index 
 
@@ -353,7 +395,8 @@ void load_paramfile_default(){
 
 void load_seq(const char* _seqfile){
      if ( strlen(_seqfile) >0 ){
-          GP.read_seq_from_file(_seqfile, model);
+          //model2.read_seq_from_file(_seqfile);
+		GP.read_seq_from_file(_seqfile,model);
      } else {
           GP.make_seq_default();
      }
@@ -368,17 +411,39 @@ void load_seq(const char* _seqfile){
 //void make_G();
 //void make_G(const char* _distfile, int _titleline, const char* _colidxfile, const char* _paramfile, const char* _ordfile);
 
+
 void make_G(){      
      timers.insert_random_timer(id3, 1 , "Gf_run_all");
      timers.timer_start(id3);     
-             
+    
+/*
+	//for each atom type
+	for(int i = 0; i< model2.seq.size(); i++){
+
+		std::string curr_Atom = model2.seq
+		int curr_idx= 0;
+
+		for(int j=0;j<model2.seq[i].size();j++){
+
+			for(int k=0;k<model2.seq_by_idx[i][j].size();k++){
+				std::string 
+				
+				G_param_start_idx[model2.seq[i]][model2.seq_by_idx[i][j][k]] = curr_idx;
+				size_t tmp = GP.params[model2.seq[i]]
+			}
+		}
+	}
+
+*/
+	
      for(auto it = GP.seq.begin(); it!=GP.seq.end(); it++) {
           // it->first  = name of atom type ;
           // it->second = vector<idx_t> ;   a vector saving the list of sequence order
           int curr_idx = 0;
           for(auto it2 = it->second.begin(); it2!=it->second.end(); it2++){                
                // *it2 = element relationship index (=atom1_type * atom2_type * ... )
-               G_param_start_idx[it->first][*it2]     = curr_idx;      // The start index is the cumulative size of all relationships until now               
+               G_param_start_idx[it->first][*it2]     = curr_idx;      // The start index is the cumulative size of all relationships until now    
+			std::cout<<"MY TEST: "<<it->first<<std::endl;           
                size_t _tmp = GP.params[it->first][*it2].size();                              
                G_param_size[it->first][*it2] = _tmp;
                curr_idx +=  _tmp;        // next relatinoship               
@@ -530,7 +595,7 @@ void make_G(const char* _distfile, int _titleline, const char* _colidxfile, cons
 
 void make_G_XYZ(const char* _xyzFile, const char* _colidxfile, const char * _paramfile, const char* _ordfile){
 	
-	load_distFileFromXYZ(_xyzFile);
+	load_distFromXYZ(_xyzFile);
 
 	load_dist_colidx(_colidxfile);
 
