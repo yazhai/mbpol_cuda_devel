@@ -41,6 +41,7 @@
 #include <omp.h>
 #endif 
 
+//test--I am making this comment on Full_NET
 
 //***********************************************************************************
 // Structure of Network:
