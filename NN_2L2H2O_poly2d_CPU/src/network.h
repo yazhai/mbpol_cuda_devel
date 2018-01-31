@@ -41,8 +41,6 @@
 #include <omp.h>
 #endif 
 
-//test--I am making this comment on Full_NET
-
 //***********************************************************************************
 // Structure of Network:
 //		dimensions: N = number of samples, input = sample input Dimension, 
