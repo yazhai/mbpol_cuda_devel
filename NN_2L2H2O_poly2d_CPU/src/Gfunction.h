@@ -415,27 +415,7 @@ void load_seq(const char* _seqfile){
 void make_G(){      
      timers.insert_random_timer(id3, 1 , "Gf_run_all");
      timers.timer_start(id3);     
-    
-/*
-	//for each atom type
-	for(int i = 0; i< model2.seq.size(); i++){
-
-		std::string curr_Atom = model2.seq
-		int curr_idx= 0;
-
-		for(int j=0;j<model2.seq[i].size();j++){
-
-			for(int k=0;k<model2.seq_by_idx[i][j].size();k++){
-				std::string 
-				
-				G_param_start_idx[model2.seq[i]][model2.seq_by_idx[i][j][k]] = curr_idx;
-				size_t tmp = GP.params[model2.seq[i]]
-			}
-		}
-	}
-
-*/
-	
+  	
      for(auto it = GP.seq.begin(); it!=GP.seq.end(); it++) {
           // it->first  = name of atom type ;
           // it->second = vector<idx_t> ;   a vector saving the list of sequence order
@@ -443,7 +423,6 @@ void make_G(){
           for(auto it2 = it->second.begin(); it2!=it->second.end(); it2++){                
                // *it2 = element relationship index (=atom1_type * atom2_type * ... )
                G_param_start_idx[it->first][*it2]     = curr_idx;      // The start index is the cumulative size of all relationships until now    
-			std::cout<<"MY TEST: "<<it->first<<std::endl;           
                size_t _tmp = GP.params[it->first][*it2].size();                              
                G_param_size[it->first][*it2] = _tmp;
                curr_idx +=  _tmp;        // next relatinoship               
