@@ -25,7 +25,7 @@ else(${_CMP_INTEL})
 endif(${_CMP_INTEL})
 
 #resource folder
-set(RES_DIR ${CMAKE_SOURCE_DIR}/res)
+set(RES_DIR ${CMAKE_SOURCE_DIR}/res/BPNN-2b)
 
 #set all source files
 set(SOURCES 	${SRC}/Gfunction.cpp 
@@ -34,12 +34,13 @@ set(SOURCES 	${SRC}/Gfunction.cpp
 		${SRC}/readGparams.cpp
 		${SRC}/timestamps.cpp 
 		${SRC}/utility.cpp 
-		${SRC}/xyzData.cpp 
+		${SRC}/atomTypeID_v2.h
 		${SRC}/fullTester.cpp)
 #set resource files
-set(RESOURCES 	${RES_DIR}/3b_to_fit.xyz
-	      	${RES_DIR}/Gfunc_params_3Bv3.dat 
-			${RES_DIR}/Gfn_order.dat)
+set(RESOURCES 	${RES_DIR}/Gfn_order.dat
+	      	${RES_DIR}/Gfunc_params_2Bv14.dat 
+		${RES_DIR}/2b_to_fit_rounded.xyz
+		${RES_DIR}/max_per_feature)
 
 file(COPY  ${RESOURCES} DESTINATION ${CMAKE_BINARY_DIR})
 
