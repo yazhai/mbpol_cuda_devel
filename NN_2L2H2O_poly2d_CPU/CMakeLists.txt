@@ -34,7 +34,7 @@ set(SOURCES 	${SRC}/Gfunction.cpp
 		${SRC}/readGparams.cpp
 		${SRC}/timestamps.cpp 
 		${SRC}/utility.cpp 
-		${SRC}/atomTypeID_v2.h
+		${SRC}/atomTypeID_v2.cpp
 		${SRC}/fullTester.cpp)
 #set resource files
 set(RESOURCES 	${RES_DIR}/Gfn_order.dat

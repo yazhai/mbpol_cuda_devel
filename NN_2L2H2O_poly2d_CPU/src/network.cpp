@@ -39,6 +39,142 @@
 
 using namespace std;
 
+/**************************Layer_t struct function definitions- /**************************/
+
+//Default constructor
+template<typename T>
+Layer_t<T>::Layer_t() :  name("Default_Layer"), weights(NULL), bias(NULL), inputs(0), 
+		outputs(0), type(Type_t::UNINITIALIZED), acttype(ActType_t::NOACTIVIATION) {};
+
+//Dense Layer Constructor
+template<typename T>
+Layer_t<T>::Layer_t( string _name, size_t _inputs, size_t _outputs, 
+		T* _weights, T* _bias)
+				: inputs(_inputs), outputs(_outputs), type(Type_t::DENSE), 
+		acttype(ActType_t::NOACTIVIATION){
+	
+	name = _name ;
+
+	/*init Weight Matrix = Output x Input Dimensions (Transposed)*/
+	T ** temp;
+	weights = nullptr;
+		if(!init_mtx_in_mem<T>(temp,inputs,outputs)){
+		cout<<"FAILED TO INITIALIZE MEMORY FOR WEIGHTS"<<endl;
+	}
+	copy(_weights,_weights+outputs*inputs,temp[0]);
+	transpose_mtx<T>(weights, temp, inputs, outputs);		
+	clearMemo<T>(temp);
+
+	/*init Bias Matrix = 1xOutput dimensions -- "Pseudo-Transposed" */
+	bias = new T[outputs];
+	copy(_bias,_bias+outputs,bias);
+}
+
+//Activation Layer Constructor(using integer as type)
+template<typename T>
+Layer_t<T>::Layer_t(string _name, int _acttype)
+				: weights(NULL), bias(NULL),inputs(0), outputs(0), 
+		type(Type_t::ACTIVIATION){
+	
+	if (_acttype < int(ActType_t::MAX_ACTTYPE_VALUE) ) {
+			acttype = static_cast<ActType_t>(_acttype);
+		}
+	name = _name;
+}
+
+//Activation Layer Constructor(using enum ActType_t)
+template<typename T>
+Layer_t<T>::Layer_t(string _name, ActType_t _acttype)
+				: weights(NULL),bias(NULL),inputs(0),outputs(0), 
+			type(Type_t::ACTIVIATION){
+	
+		acttype = _acttype;
+		name = _name;
+	} 
+
+//Destructor
+template<typename T>
+Layer_t<T>::~Layer_t(){
+	if(weights != NULL){
+		clearMemo<T>(weights);
+	}
+	if(bias != NULL) delete [] bias;
+}
+
+
+
+
+template<typename T>
+void network_t<T>::fullyConnectedForward(const Layer_t<T> & layer,
+						size_t & input, size_t & output, size_t & N,
+						T* & srcData, T** & dstData){
+
+	//update dimensions for layer
+	output = layer.outputs;
+
+	//create space for output
+	if(dstData != nullptr){
+		clearMemo<T>(dstData);	
+	}
+	init_mtx_in_mem<T>(dstData,output,N);
+
+	//Conduct Matrix Multiplication, use N as inner-most loops, because it
+	//will be the biggest!
+	int k=0;
+	for(int i=0;i<output;i++){
+		for(int j=0;j<input;j++){
+			#ifdef _OPENMP
+			#pragma omp parallel for simd shared(dstData,srcData,layer)
+			#endif 
+			for (k=0;k<N;k++){
+				dstData[i][k] += layer.weights[i][j]*srcData[N*j+k];
+			}
+		}
+	}
+	
+	//Conduct Bias Addition, se N as inn-ermost loop, beacuse it will be
+	//the biggest!
+	for(int i=0;i<output;i++){
+		#ifdef _OPENMP
+		#pragma omp parallel for simd shared(dstData,layer)
+		#endif 
+		for(int j=0;j<N;j++){
+			dstData[i][j] += layer.bias[i];
+		}
+	}
+
+	//update dimensions of input for next layer's use
+	input = output;
+} 
+
+
+//non-cblas implementaiton of forward propogation activation function(TANH)
+template <typename T>
+void network_t<T>::activationForward_TANH(const int & output,const int & N , T** srcData, T** & dstData){	
+	
+	//create space for output
+	if(dstData != nullptr){
+		clearMemo<T>(dstData);	
+	}
+	init_mtx_in_mem<T>(dstData,output,N);
+	
+	//complete faster TANH computation
+	T x;
+	for(int i=0;i<output;i++){
+		#ifdef _OPENMP
+		#pragma omp parallel for simd shared(srcData,dstData,x)
+		#endif 
+		for(int j=0;j<N;j++){
+			x = srcData[i][j];
+			x = exp(2*x);
+			x = (x-1)/(x+1);
+			dstData[i][j] = x;
+		}	
+	}
+}	
+		
+
+
 
 //cblas implementations of double and single precision forward dense layer
 //Input and layer.Weights already transposed for optimal row-major computation.
@@ -48,7 +184,6 @@ void network_t<double>::fullyConnectedForward(const Layer_t<double> & layer,
                           	size_t & input, size_t & output, size_t & N,
                           	double* & srcData, double** & dstData)
 	{
-		
 		output = layer.outputs;	//update the dimensions of the layer
 
 		//create space for output
@@ -105,402 +240,420 @@ void network_t<float>::fullyConnectedForward(const Layer_t<float> & layer,
 #endif
 
 
-/*TESTER*/
-/*
-int main(int argc, char** argv){ 
+template <typename T>
+void Layer_Net_t<T>::switchptr(T** & alpha, T** & bravo){ 
+	T** tmp;
+	tmp = alpha;
+	alpha = bravo;
+	bravo = tmp;
+	tmp = nullptr;
+}
 
-	//oldTester();				//TO USE OLD TESETERS: make neural_net public in network.h file
-	//oldTester2();			//testers may be out of date
+template <typename T>
+Layer_Net_t<T>::~Layer_Net_t(){
+	Layer_t<T>* curr = nullptr;
+	if(root != NULL){
+		curr = root;
+		while(curr->next){curr = curr->next;};
+		while(curr->prev){
+			curr = curr->prev;
+			delete curr->next;
+			curr->next = nullptr;
+		}
+		curr = nullptr;
+		delete root;
+		root = nullptr;
+	}
+}
 
-	//Timers for benchmarking
-	timers_t timers;
-	timerid_t id,id2;
-	timers.insert_random_timer( id, 0, "NN_singlePrecisionTime");
-	timers.insert_random_timer(id2,1,"NN_doublePrecisionTime");
+template <typename T>
+void Layer_Net_t<T>::insert_layer(string &_name, size_t _inputs, size_t _outputs, 
+		T * & _weights, T * & _bias){
+	if(root!=NULL){
+		Layer_t<T> * curr = root;
+		while(curr->next){curr = curr->next;};
+		curr->next = new Layer_t<T>(_name,_inputs,_outputs,_weights,_bias);
+		curr->next->prev = curr;
+	}
+	else{
+		root = new Layer_t<T>(_name, _inputs, _outputs, _weights, _bias);
+	}
+}
 
-	float ** X = nullptr;
-	double ** Y = nullptr;
-	size_t sampleCount_Single = 1;
-	size_t sampleCount_Double = 1;
-	size_t sampleDim_Single =1;
-	size_t sampleDim_Double = 1;
-	read2DArray_with_max_thredhold<float>(X, sampleCount_Single, sampleDim_Single, INFILE_S, 1);
-	read2DArray_with_max_thredhold<double>(Y,sampleCount_Double,sampleDim_Double,INFILE_D,1);
-try{
-     cout << " Run tester with single floating point precision : " <<endl;
-	timers.timer_start(id);
-     runtester<float> (INFILE1, CHECKCHAR1, X[0],sampleCount_Single,sampleDim_Single);
-	timers.timer_end(id);
-     cout << endl << endl;
-     cout << " ================================================= " <<endl << endl;
-     cout << " Run tester with double floating point precision : " <<endl;
-	timers.timer_start(id2);
-     runtester<double>(INFILE2, CHECKCHAR2, Y[0],sampleCount_Double,sampleDim_Double);
-	timers.timer_end(id2);
-     } catch (...) {
-          exit(1);     
-     }
-	
-	//get Times
-	timers.get_all_timers_info();
-     timers.get_time_collections();     
-     exit(0); 
-	return 0;
+template <typename T>
+ void Layer_Net_t<T>::insert_layer(string &_name, int _acttype){
+		if (root!=NULL) {
+			Layer_t<T>* curr = root;
+			while(curr->next) {curr = curr->next;};
+			curr->next = new Layer_t<T>(_name, _acttype);
+			curr->next->prev = curr;
+		}
+	else{
+		root = new Layer_t<T>(_name,_acttype);
+	}
+}
+
+template <typename T>
+void Layer_Net_t<T>::insert_layer(string &_name, ActType_t _acttype){
+	if (root!=NULL) {
+			Layer_t<T> * curr = root;
+			while(curr->next) {curr = curr->next;};
+			curr->next = new Layer_t<T>(_name, _acttype);
+			curr->next->prev = curr;
+		} 
+	else {
+			root = new Layer_t<T>(_name, _acttype);
+		}
 	
 }
 
-*/
-
-
-/*
-void oldTester(){
-
-	int input=4, output=3, N = 2;
-	size_t input_t = input, output_t = output, N_t = N;
-
-	//--------------------------------------------------------------------------------
-	//------------------------------- DOUBLE TEST -------------------------------------
-	cout<<"OUTPUT DIM: ";
-	cout<<output_t<<endl;
-	cout<<"INPUT DIM: ";
-	cout<<input_t<<endl;
-
-	cout <<"Doubles: " <<endl;
-	double ** testWeightsT = NULL;
+template <typename T>
+Layer_t<T>* Layer_Net_t<T>::get_layer_by_seq(int _n){
+	Layer_t<T>* curr=root;
+	int i = 1;
 	
-	if(!init_mtx_in_mem<double>(testWeightsT,input_t,output_t))
-		cout << "Test Weights failed to initialize!"<<endl;
+	while( (curr->next != NULL)  && (i<_n) ){
+		curr = curr->next;
+		i++ ;
+	};
+	return curr;
+} 
 	
-	for(int i=0;i<input;i++){
-		for(int j=0;j<output;j++){
-			testWeightsT[i][j] = (j+i)/3.14159265358979;
-		}
-	}
-	cout<<"weights"<<endl;
-	for(int i=0;i<input;i++){
-		for(int j=0;j<output;j++){
-			cout<<testWeightsT[i][j] << " " ;
-		}
-		cout<<endl;
-	}
-	cout<<"-------------------"<<endl;
-
-	double * testWeights = testWeightsT[0];
-	
-	double * testBias = new double[3];
-	
-	testBias[0]= .314159; 
-	testBias[1] =.271828; 
-	testBias[2] =.173205;
-
-	Layer_Net_t<double> * myNet = new Layer_Net_t<double>();
-
-	string name = "test";
-
-	
-	myNet->insert_layer(name,input,output,testWeights,testBias);
-	
-	double ** testIn = NULL;
-	if(!init_mtx_in_mem<double>(testIn,N_t,input_t))
-		cout << "Test In failed to initialize!"<<endl;
-
-	for(int i=0;i<N;i++){
-		for(int j=0;j<input;j++){
-			testIn[i][j] = (i*2+j)/(5*2.71828);
-		}
-	}
-	
-	cout<<"Input"<<endl;
-	for(int i=0;i<N;i++){
-		for(int j=0;j<input;j++){
-			cout << testIn[i][j] << " " ;
-		}
-			cout<<endl;
-	}
-	cout<<"-------------------"<<endl;
-
-	double ** testInT = nullptr;
-
-	transpose_mtx<double>(testInT,testIn, N_t, input_t);
-
-
-	double ** testOutT = nullptr;
-	double ** testOut = nullptr;
-	
-	myNet->neural_net.fullyConnectedForward(*(myNet->root),input_t,output_t,N_t,*testInT,testOutT);
-	transpose_mtx<double>(testOut,testOutT,output_t,N_t);	
-
-	for(int i=0;i<N;i++){
-		for(int j=0;j<output;j++){
-			cout<<testOut[i][j]<<" ";
-		}
-		cout<<endl;
-	}
-
-	cout<<"OUTPUT DIM: ";
-	cout<<output_t<<endl;
-	cout<<"INPUT DIM: ";
-	cout<<input_t<<endl;
-	string name2 = "testTanH";
-	myNet->insert_layer(name2, 2);
-
-	double ** testOut2T = nullptr;
-	double ** testOut2 = nullptr;
+template <typename T>
+void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData, unsigned long int& _outsize){
+		if (root != NULL) {
+             
+		size_t input = _input;
+		size_t N = _N;
 		
-	myNet->neural_net.activationForward_TANH(output_t,N_t,testOutT,testOut2T);
-	transpose_mtx<double>(testOut2,testOut2T,output_t,N_t);	
-	
+		//output size will change based on layer dim(init to 1 for simplicity)
+			size_t output = 1;
 
-	cout<<"---------------------"<<endl;
-	for(int i=0;i<N;i++){
-		for(int j=0;j<output;j++){
-			cout<<testOut2[i][j]<<" ";
-		}
-		cout<<endl;
+			//two pointers used to store and recieve data(switch between them)
+			T** srcDataPtr = nullptr; 
+		T** dstDataPtr = nullptr;
+
+		//init srcDataPtr to point to tranpose of input data
+		T** temp;
+		init_mtx_in_mem<T>(temp,N,input);
+		copy(_inputData,_inputData+input*N,temp[0]);
+		
+		cout<<"Predict Input: "<<input<<" Predict N: "<<N<<endl;
+		
+		transpose_mtx<T>(srcDataPtr, temp, N, input);
+
+		clearMemo<T>(temp);
+										
+			Layer_t<T>* curr = root;
+			do{
+			cout<<curr->name<<endl;
+			//DENSE LAYER PROPOGATION
+			if ( curr-> type == Type_t::DENSE ) { 
+				
+					// If it is a dense layer, we perform fully_connected forward 
+					neural_net.fullyConnectedForward((*curr), input,output,N, *srcDataPtr, dstDataPtr);
+				//note: inside fullyConnectedForward, output is updated, and input=output for next layer use.
+
+					switchptr(srcDataPtr, dstDataPtr);
+				} 
+			//ACTIVATION LAYER PROPOGATION
+			else if (curr -> type == Type_t::ACTIVIATION){
+					// If it is an activiation layer, perform corresponding activiation forwards
+					if (curr -> acttype == ActType_t::TANH){
+						neural_net.activationForward_TANH(output,N, srcDataPtr, dstDataPtr);
+						switchptr(srcDataPtr, dstDataPtr);
+					} 
+				else if (curr->acttype == ActType_t::LINEAR) {    
+	
+					} 
+				else {
+					cout <<"Unknown Activation Type!"<<endl;
+				}
+				} 
+			else {
+					cout << "Unknown layer type!" <<endl;
+			}
+
+			} 
+		while(  (curr=curr->next) != NULL);
+		
+		//final output size calculated
+			_outsize=output*N;
+	
+		//create space for output Data
+			if(_outputData!=NULL){
+				delete[] _outputData;
+			}
+			_outputData = new T[_outsize];
+	
+			//copy from srcDataPtr to outputData          
+			copy(*srcDataPtr,*srcDataPtr + _outsize,_outputData);
+					
+			//Release Resources
+		clearMemo<T>(srcDataPtr);
+		clearMemo<T>(dstDataPtr);
+		srcDataPtr = nullptr;
+			dstDataPtr = nullptr;  
 	}
 
-	//free memories
-	delete myNet;
-	delete [] testBias;
-	clearMemo<double>(testWeightsT);
-	clearMemo<double>(testIn);
-	//clearMemo<double>(testOut);
-	//clearMemo<double>(testOut2);
+	return;
+}	 
 
-	cout<<"OUTPUT DIM: ";
-	cout<<output_t<<endl;
-	cout<<"INPUT DIM: ";
-	cout<<input_t<<endl;
 
-	//--------------------------------------------------------------------------------
-	//------------------------------- FLOAT TEST -------------------------------------
-	cout <<"Floats: " <<endl;
-	float ** testWeights2T = NULL;
-	input_t = input;
-	output_t = output;
-	if(!init_mtx_in_mem<float>(testWeights2T,input_t,output_t))
-		cout << "Test Weights2 failed to initialize!"<<endl;
+template <typename T>
+void runtester(const char* filename, const char* checkchar, T** input, size_t numAtoms, size_t sampleCount, size_t * sampleDim){
+
+	using namespace H5;
 	
-	for(int i=0;i<input;i++){
-		for(int j=0;j<output;j++){
-			testWeights2T[i][j] = (j+i)/3.14159265358979;
+	ofstream outputFile;
+	string filePath = "NN_final.out";
+     // initialize memory for rank, dims, and data
+     hsize_t data_rank=0;
+     hsize_t* data_dims = nullptr;
+     T* data = nullptr;     
+     
+     hsize_t bias_rank=0;
+     hsize_t* bias_dims = nullptr;
+     T* bias = nullptr;
+     
+     Layer_Net_t<T> layers_1;
+	Layer_Net_t<T> layers_2;
+
+	Layer_Net_t<T> * currentNet = nullptr;
+     
+     // reserver for results
+     unsigned long int outsize = 0; 
+     T* output = nullptr;
+	T* finalOutput = nullptr;    
+     
+     // Open HDF5 file handle, read only
+     H5File file(filename,H5F_ACC_RDONLY);
+     
+     try{     
+          // Get saved layer names
+          vector<string> sequence;
+          sequence = Read_Attr_Data_By_Seq(file,PATHTOMODEL, LAYERNAMES); 
+		int layerID=1;		
+          for (auto it=sequence.begin();it!=sequence.end();it++) {
+	
+               // for one single layer get path
+               string seqPath = mkpath ( string(PATHTOMODEL),  *it ) ;
+               
+               // get this layer's dataset names(weights and bias)
+               vector<string> weights;
+               weights = Read_Attr_Data_By_Seq(file,seqPath.c_str(), WEIGHTNAMES);
+			cout<<*it<<endl;
+			if(weights.size() == 0){
+				//this layer is not just an input, and not really a layer
+				continue;
+			}
+			else if(*it == "sequential_1"){
+				currentNet = & layers_1;
+			}
+			else{
+				currentNet = & layers_2;
+
+               }
+               	
+               	cout << " Reading out data: " << *it << endl;
+               	for (auto it2 = weights.begin(); it2 != weights.end(); it2++){ 
+                    	// for one data set get path
+                    	string datasetPath = mkpath(seqPath,*it2) ;
+                    
+					//Dense Layer Name
+					string DLname = (*it2).substr(0,7);
+
+
+                    	// check the dataset name's last character to see if this dataset is a Weight or a Bias
+                    	if ((*it2).compare(((*it2).length()-1),1, checkchar )==0){
+						
+						
+                        	 	// get out weight data
+                         	Read_Layer_Data_By_DatName<T> (file, datasetPath.c_str(), data, data_rank, data_dims); 
+                    	}
+					else{
+                         	// get out bias data
+                         	Read_Layer_Data_By_DatName<T> (file, datasetPath.c_str(), bias, bias_rank, bias_dims);\
+						cout << " Initialize layer : " << DLname << endl;
+					
+						(*currentNet).insert_layer(DLname, data_dims[0], data_dims[1], data, bias);
+
+						cout << " Layer " << DLname << "  is initialized. " <<endl <<endl; 
+
+
+						//insert tanh activation layer afterwards
+						string actName = "Activation_" + to_string(layerID/2);
+						
+						cout << " Initialize layer : " << actName << endl;
+						(*currentNet).insert_layer(actName, ActType_t::TANH);
+						cout << " Layer " << actName << "  is initialized. " <<endl <<endl;      						
+                    
+						//reset values for next loop
+						data_rank=0;
+               			bias_rank=0;        
+						
+                    	}
+					layerID++;
+               	}
+				
+				//make last layer activation type linear
+				(*currentNet).get_layer_by_seq(layerID) -> acttype=ActType_t::LINEAR;
+				cout<<"Changing Layer "<<(*currentNet).get_layer_by_seq(layerID)->name<<" to Linear Activation"<<endl;
+				cout << "Inserting Layers " << *it<< " Finished!"  <<endl;
+              
+          	}
+          
+          cout << endl;
+          cout << "Prediction all samples : " <<endl;
+
+
+		//delete current content of output file
+		outputFile.open(filePath,ofstream::out|ofstream::trunc);
+		outputFile.close();
+		//double * finalOutput = nullptr;
+		
+		for(int ii=0;ii<numAtoms;ii++){
+
+			//check if this input is hydrogen or oxygen based on the sampleDim ( input count)
+			if(sampleDim[ii] == 84){
+				//this is a hydrogen atom
+				currentNet = & layers_2;
+				cout<<"USING HYDROGEN NET Input Dimension: "<< sampleDim[ii] << " N: " <<sampleCount<<endl;
+			}
+			else{
+				//this is an oxygen atom
+				currentNet = & layers_1;
+				cout<<"USING OXYGEN NET Input Dimension: " << sampleDim[ii] << " N: " <<sampleCount<<endl;
+			}
+			
+
+			cout<<"Prediction " << ii << endl;
+          	(*currentNet).predict(input[ii], sampleCount, sampleDim[ii], output, outsize);
+   
+			//if the finalOutput array does not exist, create and init to 0.
+			if(finalOutput == nullptr){
+				cout<<endl<<"finalOutput Init"<<endl;
+				finalOutput = new T[outsize];
+				for(int i = 0;i < outsize; i++)
+					finalOutput[i] = 0;
+			}
+
+			//scores for each atom to file, sum scores to finalOutput array
+			outputFile.open(filePath,ofstream::out|ofstream::app);
+			outputFile<<endl<<"NEXT ATOM:"<<endl;
+			for(int a = 0;a<outsize;a++){
+				//sum energies of all atoms for final result. 
+				finalOutput[a] += output[a];
+				outputFile<<setprecision(18)<<scientific<<output[a]<<" ";
+				if(a%3 == 2)
+					outputFile<<endl;
+			}
+			outputFile.close();
+			
+			// show up the final score, to check the result consistency
+          	// first, setup the precision
+			if(TypeIsDouble<T>::value) {
+               	std::cout.precision(std::numeric_limits<double>::digits10+1);
+          	} else {
+               	std::cout.precision(std::numeric_limits<float>::digits10+1);;
+          	}
+          	std::cout.setf( std::ios::fixed, std::ios::floatfield );     
+			// then, select how many results will be shown.
+          	// if too many output, only show some in the beginning and some in the end
+          	if (outsize <= MAXSHOWRESULT){
+               	cout << endl << " Final score are :" <<endl;            
+                	for(int ii=0; ii<outsize; ii++){
+                    	cout << (output[ii]) << "  " ;
+               	}         
+          	} 
+			else {
+               	cout << " Final score ( first " << MAXSHOWRESULT/2 << " records ):" <<endl;
+               	for(int ii=0; ii<(MAXSHOWRESULT/2); ii++){
+                    	cout << (output[ii]) << "  " ;
+               	}
+               	cout << endl << " Final score ( last " << MAXSHOWRESULT/2 << " records ):" <<endl;
+               	for(int ii=(outsize-MAXSHOWRESULT/2); ii<outsize; ii++){
+                    	cout << (output[ii]) << "  " ;
+               	}                         
+          	}
+          	cout << endl;     
 		}
-	}
-	
-	
-	float * testWeights2 = testWeights2T[0];
-	
-	float * testBias2 = new float[3];
-	
-	testBias2[0]= .314159; 
-	testBias2[1] =.271828; 
-	testBias2[2] =.173205;
-
-	Layer_Net_t<float> * myNet2 = new Layer_Net_t<float>();
-
-	string name3 = "test2";
-
-	
-	myNet2->insert_layer(name3,input,output,testWeights2,testBias2);
-	
-	float ** testIn2 = NULL;
-	if(!init_mtx_in_mem<float>(testIn2,N_t,input_t))
-		cout << "Test In 2 failed to initialize!"<<endl;
-
-	for(int i=0;i<N;i++){
-		for(int j=0;j<input;j++){
-			testIn2[i][j] = (i*2+j)/(5*2.71828);
+  
+		//energy conversion: 1 kcal/mol = .0433634 eV
+		for(int a = 0;a<outsize;a++){
+			finalOutput[a]*= ((6.0)/(.0433634));
 		}
-	}
+		
+          cout<<":::::::::::::::::::: FINAL OUTPUT::::::::::::::::: " <<endl;
+		if (outsize <= MAXSHOWRESULT){
+               cout << endl << " Final Final score are :" <<endl;            
+                for(int ii=0; ii<outsize; ii++){
+                   	cout << (finalOutput[ii]) << "  " ;
+               }         
+          } 
+		else {
+               cout << " Final score ( first " << MAXSHOWRESULT/2 << " records ):" <<endl;
+               for(int ii=0; ii<(MAXSHOWRESULT/2); ii++){
+                    cout << (finalOutput[ii]) << "  " ;
+               }
+               cout << endl << " Final score ( last " << MAXSHOWRESULT/2 << " records ):" <<endl;
+               for(int ii=(outsize-MAXSHOWRESULT/2); ii<outsize; ii++){
+                   	cout << (finalOutput[ii]) << "  " ;
+               }                         
+          }
+          cout << endl;
+		
+		outputFile.open("my_y_pred.txt");
+		outputFile<<" Final Output -- Summation"<<endl;
+		for(int a = 0;a<outsize;a++){
+			outputFile<<setprecision(18)<<scientific<<finalOutput[a]<<" ";
+			outputFile<<endl;
+		}	
+		outputFile.close();
+		
 
+			
+     } 
+	catch (...){
+          if(bias!=NULL)       delete[] bias;
+          if(bias_dims!=NULL)  delete[] bias_dims;
+          if(data!=NULL)       delete[] data;
+          if(data_dims!=NULL)  delete[] data_dims;  
+          if(output!=NULL) delete[] output;     
+		if(finalOutput!=NULL) delete[] finalOutput;     
+          file.close();
+     }
 
-	float ** testOut3 = NULL;
-	if(!init_mtx_in_mem<float>(testOut3,N_t,output_t))
-		cout << "Test Out3 failed to initialize!"<<endl;
-	
-
-	myNet2->neural_net.fullyConnectedForward(*(myNet2->root),input_t,output_t,N_t,*testIn2,testOut3);
-	
-	for(int i=0;i<N;i++){
-		for(int j=0;j<output;j++){
-			cout<<testOut3[i][j]<<" ";
-		}
-		cout<<endl;
-	}
-
-	string name4 = "testTanH2";
-	myNet2->insert_layer(name4, 2);
-
-	float ** testOut4 = NULL;
-	if(!init_mtx_in_mem<float>(testOut4,N_t,output_t))
-		cout << "Test Out4 failed to initialize!"<<endl;
-	myNet2->neural_net.activationForward_TANH(output,N,testOut3,testOut4);
-	
-
-	cout<<"---------------------"<<endl;
-	for(int i=0;i<N;i++){
-		for(int j=0;j<output;j++){
-			cout<<testOut4[i][j]<<" ";
-		}
-		cout<<endl;
-	}
-	
-	//free memories
-	delete myNet2;
-	delete [] testBias2;
-	clearMemo<float>(testWeights2T);
-	clearMemo<float>(testIn2);
-	clearMemo<float>(testOut3);
-	clearMemo<float>(testOut4);
-
+     // Free memory of allocated arraies.
+     if(bias!=NULL)       delete[] bias;
+     if(bias_dims!=NULL)  delete[] bias_dims;
+     if(data!=NULL)       delete[] data;
+     if(data_dims!=NULL)  delete[] data_dims;     
+     if(output!=NULL) delete[] output;     
+	if(finalOutput!=NULL) delete[] finalOutput;  
+     file.close();
+     return;
 }
 
-void oldTester2(){
-	
-//--------------------------------------------------------------------------------
-//------------------------------- Double - Double TEST -------------------------------------
+template struct Layer_t<double>;
+template struct Layer_t<float>;
 
-	int input=4, output=3, N = 2;
-	size_t input_t = input, output_t = output, N_t = N;
-
-	cout<<"OUTPUT DIM: ";
-	cout<<output_t<<endl;
-	cout<<"INPUT DIM: ";
-	cout<<input_t<<endl;
-
-	cout <<"Doubles: " <<endl;
-	double ** testWeightsT = NULL;
-	
-	if(!init_mtx_in_mem<double>(testWeightsT,input_t,output_t))
-		cout << "Test Weights failed to initialize!"<<endl;
-	
-	for(int i=0;i<input;i++){
-		for(int j=0;j<output;j++){
-			testWeightsT[i][j] = (j+i)/3.14159265358979;
-		}
-	}
-	cout<<"weights"<<endl;
-	for(int i=0;i<input;i++){
-		for(int j=0;j<output;j++){
-			cout<<testWeightsT[i][j] << " " ;
-		}
-		cout<<endl;
-	}
-	cout<<"-------------------"<<endl;
-
-	double * testWeights = testWeightsT[0];
-	
-	double * testBias = new double[3];
-	
-	testBias[0]= .314159; 
-	testBias[1] =.271828; 
-	testBias[2] =.173205;
-
-	Layer_Net_t<double> * myNet = new Layer_Net_t<double>();
-
-	string name = "test";
-
-	
-	myNet->insert_layer(name,input,output,testWeights,testBias);
-	
-	double ** testIn = NULL;
-	if(!init_mtx_in_mem<double>(testIn,N_t,input_t))
-		cout << "Test In failed to initialize!"<<endl;
-
-	for(int i=0;i<N;i++){
-		for(int j=0;j<input;j++){
-			testIn[i][j] = (i*2+j)/(5*2.71828);
-		}
-	}
-	
-	cout<<"Input"<<endl;
-	for(int i=0;i<N;i++){
-		for(int j=0;j<input;j++){
-			cout << testIn[i][j] << " " ;
-		}
-			cout<<endl;
-	}
-	cout<<"-------------------"<<endl;
+template class network_t<double>;
+template class network_t<float>;
 
 
-	double ** testOut = NULL;
-	if(!init_mtx_in_mem<double>(testOut,N_t,output_t))
-		cout << "Test Out failed to initialize!"<<endl;
-	
-	
-	myNet->neural_net.fullyConnectedForward(*(myNet->root),input_t,output_t,N_t,*testIn,testOut);
-	
-	for(int i=0;i<N;i++){
-		for(int j=0;j<output;j++){
-			cout<<testOut[i][j]<<" ";
-		}
-		cout<<endl;
-	}
+template class Layer_Net_t<double>;
+template class Layer_Net_t<float>;
 
 
-double ** testWeights2T = NULL;
-
-	input = 3; output = 4;	
-
-	if(!init_mtx_in_mem<double>(testWeights2T,input_t,output_t))
-		cout << "Test Weights failed to initialize!"<<endl;
-	
-	for(int i=0;i<input;i++){
-		for(int j=0;j<output;j++){
-			testWeights2T[i][j] = (j+i)/3.14159265358979;
-		}
-	}
-	cout<<"weights"<<endl;
-	for(int i=0;i<input;i++){
-		for(int j=0;j<output;j++){
-			cout<<testWeights2T[i][j] << " " ;
-		}
-		cout<<endl;
-	}
-	cout<<"-------------------"<<endl;
-
-	double * testWeights2 = testWeights2T[0];
-	
-	double * testBias2 = new double[4];
-	
-	testBias2[0]= .314159; 
-	testBias2[1] =.271828; 
-	testBias2[2] =.173205;
-	testBias2[3] = .1;
-
-	Layer_Net_t<double> * myNet2 = new Layer_Net_t<double>();
-
-	string name2 = "test2";
-
-	
-	myNet2->insert_layer(name2,input_t,output_t,testWeights2,testBias2);
-
-double ** testOut2 = NULL;
-	if(!init_mtx_in_mem<double>(testOut2,N_t,output_t))
-		cout << "Test Out failed to initialize!"<<endl;
-	
-	
-	myNet2->neural_net.fullyConnectedForward(*(myNet2->root),input_t,output_t,N_t,*testOut,testOut2);
-	
-	for(int i=0;i<N;i++){
-		for(int j=0;j<output;j++){
-			cout<<testOut2[i][j]<<" ";
-		}
-		cout<<endl;
-	}
-	
-	
-	//free memories
-	delete myNet2;
-	delete [] testBias2;
-	clearMemo<double>(testWeights2T);
-	clearMemo<double>(testOut);
-	clearMemo<double>(testOut2);
-
-}
+template void runtester<double>(const char* filename, const char* checkchar, double ** input, size_t numAtoms, 
+						size_t sampleCount, size_t * sampleDim);
 
 
-*/
+template void runtester<float>(const char* filename, const char* checkchar, float ** input, size_t numAtoms, 
+						size_t sampleCount, size_t * sampleDim);
+
+
 
 
 
