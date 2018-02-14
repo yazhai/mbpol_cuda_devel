@@ -134,7 +134,7 @@ string timers_t::get_label(timerid_t _id){
      return timers_list[_id].label;
 }
 
-bool timers_t::get_all_timers_info(){     
+bool timers_t::get_all_timers_info(){    
      for (auto item : timers_list) {
           cout << setw(4)  << item.second.markid   
                << setw(10) << item.second.label

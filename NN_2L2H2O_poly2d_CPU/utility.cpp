@@ -15,7 +15,7 @@
 #include <string>
 
 #include "utility.h"
-#include "atomTypeID.h"
+//#include "atomTypeID.h"
 
 // Define the cblas library 
 #ifdef _USE_GSL
@@ -39,6 +39,22 @@
 using namespace std;
 
 
+
+
+template<>
+double return_a_number<double>(string _string){
+     return  stod ( _string );     
+}
+
+template<>
+float return_a_number<float>(string _string){
+     return  stof ( _string );     
+}
+
+template<>
+int return_a_number<int>(string _string){
+     return  stoi  ( _string );     
+}
 
 //==============================================================================
 //

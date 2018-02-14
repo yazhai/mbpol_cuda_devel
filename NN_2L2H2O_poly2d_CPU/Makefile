@@ -113,7 +113,7 @@ all: clean build
 
 build: gfunction_generate.x
 
-DEP= tester.o Gfunction.o utility.o atomTypeID.o readGparams.o timestamps.o
+DEP= Gfunction_v2.o utility.o atomTypeID_v2.o readGparams_v2.o timestamps.o
 
 gfunction_generate.x: $(DEP)
 	$(HOST_COMPILER) $(INCLUDES) $(LIBRARIES) $(LINKOPT) $(CCFLAGS) $(LDFLAGS)  -o $@ $+
