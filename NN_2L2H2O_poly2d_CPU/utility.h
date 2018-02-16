@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <cstdint>
 
 #include <iostream>
 #include <sstream>
@@ -20,7 +21,6 @@
 #include <map>
 #include <string>
 
-#include "atomTypeID.h"
 
 // Define the cblas library 
 #ifdef _USE_GSL
@@ -29,6 +29,7 @@
 #include <mkl_cblas.h>
 #else
 //#include <gsl/gsl_cblas.h>
+;
 #endif
 
 
@@ -40,9 +41,10 @@
 //==============================================================================
 // A 2D-array type based on vector
 template<typename T>
-using matrix_by_vector_t = std::vector<std::vector<T> >;
+using matrix_by_vector_t = std::vector< std::vector<T> >;
 
-
+// data type to save atom index
+using idx_t = uint32_t ;
 
 
 //==============================================================================
@@ -55,9 +57,23 @@ bool IsFloat( std::string myString ) {
     iss >> std::skipws >> f; // skipws ignores leading whitespace
     // Check the entire string was consumed and if either failbit or badbit is set
     return iss.eof() && !iss.fail(); 
-}
+};
 
 
+template <typename T>
+T return_a_number(std::string _string) {
+    std::cout << " This type of data can not be correctly returned at the moment. " << std::endl;
+    return (T)0;
+};
+
+template <>
+double return_a_number<double>(std::string _string);
+
+template <>
+float return_a_number<float> (std::string _string);
+
+template <>
+int return_a_number<int> (std::string _string);
 
 
 //==============================================================================
@@ -72,7 +88,7 @@ void clearMemo(T** & data){
      };
      data = nullptr;
      return;
-}
+};
 
 
 template <typename T>
@@ -82,7 +98,7 @@ void clearMemo(std::vector<T**> & data){
           data.pop_back();
      }
      return;
-}
+};
 
 
 
@@ -93,7 +109,7 @@ void clearMemo(std::map<std::string, T**> & data){
           it->second = nullptr;
      }
      return;
-}
+};
 
 
 
@@ -334,7 +350,7 @@ void norm_rows_in_mtx_by_col_vector(T* src_mtx, size_t src_rows, size_t src_cols
                src_mtx[src_cols*i + j] = src_mtx[src_cols*i + j] * scale ;
           }
      }
-}
+};
 
 
 #if defined (_USE_GSL) || defined (_USE_MKL)
@@ -353,7 +369,7 @@ void norm_rows_by_maxabs_in_each_row(T* src_mtx, size_t src_rows, size_t src_col
      get_max_each_row<T>(norms, src_mtx, src_rows, src_cols, max_start_col, max_end_col);   
      norm_rows_in_mtx_by_col_vector<T>(src_mtx, src_rows, src_cols, norms, norm_start_col, norm_end_col);          
      delete[] norms;
-}
+};
 
 
 
