@@ -9,13 +9,13 @@
 ## Then the G_function matrix will be constructed in [HH - HOO - HO] sequence. 
 ##
 
+
 H H
-#H O
-#H O O
+H O
 H H O
-#H H H
-#O H
-#O O
-#O H O
-#O H H
+H H H
+O H
+O O
+O H O
+O H H
 

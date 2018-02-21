@@ -7,6 +7,7 @@
 #include <map>
 #include <limits>
 #include <math.h>
+#include <algorithm>
 
 #include "utility.h"
 #include "atomTypeID_v2.h"
@@ -332,7 +333,7 @@ void make_G(){
           }
      }
 
-
+for(int loop = 0; loop < 1; loop++){
 
      timers.insert_random_timer(id3, 1 , "Gf_run_all");
      timers.timer_start(id3);     
@@ -341,11 +342,14 @@ void make_G(){
      xyz = model.XYZ ; // Give reference to xyz
      
       
-     size_t Pair_Batch = NCluster;  // 
-     // size_t id_pair = 0 ;
+     size_t Cluster_Batch = NCluster ;  // 
+     // size_t id_cluster = 0 ;
 
-
-for (size_t id_batch = 0; id_batch < NCluster; id_batch += NCluster){
+// The most outer iteration is looping for every Cluster_Batch dimers/trimers
+// while the most inner iteration is looping for every cluster within the Cluster_Batch
+for (size_t batchstart = 0; batchstart < NCluster; batchstart += Cluster_Batch){
+      
+      size_t batchlimit = std::min(batchstart+Cluster_Batch, NCluster);
 
           // for each type (first type in seq)
           for(idx_t type_id = 0; type_id < NType; type_id ++ ){
@@ -362,18 +366,20 @@ for (size_t id_batch = 0; id_batch < NCluster; id_batch += NCluster){
 
                     idx_t type1_id = model.seq_by_idx[type_id][relation_idx][1] ; // second type in seq
 
-                    // pick up an atom for type_0 (first in seq)
-                    for (auto atom0_id = TypeStart[type_id]; atom0_id < TypeStart[type_id]+TypeNAtom[type_id] ; atom0_id++){
 
-                         // print the selected relationship
-                         // std::cout << *rel << "  atom " << atom0_id << std::endl;
-                         
-                         // if radial 
-                         if(model.seq_by_idx[type_id][relation_idx].size() == 2) { 
+                    // if radial 
+                    if(model.seq_by_idx[type_id][relation_idx].size() == 2) { 
+
+                          // pick up an atom for type_0 (first in seq)
+                          for (auto atom0_id = TypeStart[type_id]; atom0_id < TypeStart[type_id]+TypeNAtom[type_id] ; atom0_id++){
+
+                              // print the selected relationship
+                              // std::cout << *rel << "  atom " << atom0_id << std::endl;
+                              T** G0 = G[atom0_id] ;   // Gfn ptr
+
                               // second type
                               // for atom_1 in type_1;
-                              // loop only atom_1>atom_0 when type_1 == type_0
-                              
+                              // loop only atom_1>atom_0 when type_1 == type_0  
                               for (auto atom1_id = TypeStart[type1_id]; atom1_id < TypeStart[type1_id]+TypeNAtom[type1_id] ; atom1_id++){        
 
                                    // if not same type, do it normally
@@ -382,13 +388,13 @@ for (size_t id_batch = 0; id_batch < NCluster; id_batch += NCluster){
                                         // print the selected atoms ! 
                                         // std::cout << atom0_id << "  " << atom1_id << std::endl;
 
-// for (size_t id_batch = 0; id_batch < NCluster; id_batch += Pair_Batch){
+// for (size_t batchstart = 0; batchstart < NCluster; batchstart += Cluster_Batch){
 #ifdef _OPENMP
-#pragma omp parallel for simd shared(atom0_id, atom1_id, id_batch, Pair_Batch, np, nc, G, offset_by_rel, COL_RAD_RS, COL_RAD_ETA)
+#pragma omp parallel for simd shared(atom0_id, atom1_id, batchstart, batchlimit, np, nc, G0, offset_by_rel, COL_RAD_RS, COL_RAD_ETA)
 #endif  
-for(size_t id_pair = id_batch; id_pair< (id_batch+ Pair_Batch) && id_pair < NCluster; id_pair++)
+for(size_t id_cluster = batchstart; id_cluster< batchlimit; id_cluster++)
 {
-                                        T d = get_dist(atom0_id, atom1_id, id_pair);
+                                        T d = get_dist(atom0_id, atom1_id, id_cluster);
                                         for (int ip = 0; ip < np; ip ++){
 
                                              // print the position in G at which the result is saved to 
@@ -396,7 +402,7 @@ for(size_t id_pair = id_batch; id_pair< (id_batch+ Pair_Batch) && id_pair < NClu
                                              // size_t c = b + ip ;
                                              // std::cout << c << " ";
                                              
-                                             G[atom0_id][id_pair][offset_by_rel + ip ]  +=  get_Gradial(d, p[ip*nc + COL_RAD_RS], p[ip*nc + COL_RAD_ETA] )  ; 
+                                             G0[id_cluster][offset_by_rel + ip ]  +=  get_Gradial(d, p[ip*nc + COL_RAD_RS], p[ip*nc + COL_RAD_ETA] )  ; 
                                         }
 
                                         // print some nice endline
@@ -410,14 +416,16 @@ for(size_t id_pair = id_batch; id_pair< (id_batch+ Pair_Batch) && id_pair < NClu
 
                                         // print the selected atoms ! 
                                         // std::cout << atom0_id << "  " << atom1_id << std::endl;
+                                        T** G1 = G[atom1_id];
 
-// for (size_t id_batch = 0; id_batch < NCluster; id_batch += Pair_Batch){
+
+// for (size_t batchstart = 0; batchstart < NCluster; batchstart += Cluster_Batch){
 #ifdef _OPENMP
-#pragma omp parallel for simd shared(atom0_id, atom1_id, id_batch, Pair_Batch, np, nc, G, offset_by_rel, COL_RAD_RS, COL_RAD_ETA)
+#pragma omp parallel for simd shared(atom0_id, atom1_id, batchstart, batchlimit, np, nc, G0, G1, offset_by_rel, COL_RAD_RS, COL_RAD_ETA)
 #endif
-for(size_t id_pair = id_batch; id_pair< (id_batch+ Pair_Batch) && id_pair < NCluster; id_pair++)
+for(size_t id_cluster = batchstart; id_cluster< batchlimit; id_cluster++)
 {                                        
-                                        T d = get_dist(atom0_id, atom1_id, id_pair);
+                                        T d = get_dist(atom0_id, atom1_id, id_cluster);
                                         for (int ip = 0; ip < np; ip ++){
 
                                              // print the position in G at which the result is saved to 
@@ -426,8 +434,8 @@ for(size_t id_pair = id_batch; id_pair< (id_batch+ Pair_Batch) && id_pair < NClu
                                              // std::cout << c << " ";
 
                                              T tmp = get_Gradial(d, p[ip*nc + COL_RAD_RS], p[ip*nc + COL_RAD_ETA] ) ;
-                                             G[atom0_id][id_pair][offset_by_rel + ip ]  += tmp  ; 
-                                             G[atom1_id][id_pair][offset_by_rel + ip ]  += tmp ;
+                                             G0[id_cluster][offset_by_rel + ip ]  += tmp  ; 
+                                             G1[id_cluster][offset_by_rel + ip ]  += tmp ;
                                         }
 
                                         // print some nice endline
@@ -436,7 +444,16 @@ for(size_t id_pair = id_batch; id_pair< (id_batch+ Pair_Batch) && id_pair < NClu
 // }
                                    }   // end of if type0== type1, or atom1_id>atom0_id
                               }  // end of atom1_id 
-                         }   else {  // if radial -  else angular relations
+
+                          } // end of atom0_id  
+                    }   else {  // if radial -  else angular relations
+
+                          // pick up an atom for type_0 (first in seq)
+                          for (auto atom0_id = TypeStart[type_id]; atom0_id < TypeStart[type_id]+TypeNAtom[type_id] ; atom0_id++){
+
+                              // print the selected relationship
+                              // std::cout << *rel << "  atom " << atom0_id << std::endl;
+                              T** G0 = G[atom0_id] ;   // Gfn ptr
 
                               // the third type in seq
                               idx_t type2_id = model.seq_by_idx[type_id][relation_idx][2];
@@ -457,15 +474,15 @@ for(size_t id_pair = id_batch; id_pair< (id_batch+ Pair_Batch) && id_pair < NClu
                                              // print the selected atoms ! 
                                              // std::cout << atom0_id << "  " << atom1_id << "  " << atom2_id << std::endl;
 
-// for (size_t id_batch = 0; id_batch < NCluster; id_batch += Pair_Batch){
+// for (size_t batchstart = 0; batchstart < NCluster; batchstart += Cluster_Batch){
 #ifdef _OPENMP
-#pragma omp parallel for simd shared(atom0_id, atom1_id, atom2_id, id_batch, Pair_Batch, np, nc, G, offset_by_rel, COL_ANG_ETA, COL_ANG_ZETA, COL_ANG_LAMBD)
+#pragma omp parallel for simd shared(atom0_id, atom1_id, atom2_id, batchstart, batchlimit, np, nc, G0, offset_by_rel, COL_ANG_ETA, COL_ANG_ZETA, COL_ANG_LAMBD)
 #endif
-for(size_t id_pair = id_batch; id_pair< (id_batch+ Pair_Batch) && id_pair < NCluster; id_pair++)
+for(size_t id_cluster = batchstart; id_cluster< batchlimit; id_cluster++)
 {
-                                             T dij = get_dist(atom0_id, atom1_id, id_pair);
-                                             T dik = get_dist(atom0_id, atom2_id, id_pair);
-                                             T djk = get_dist(atom1_id, atom2_id, id_pair);
+                                             T dij = get_dist(atom0_id, atom1_id, id_cluster);
+                                             T dik = get_dist(atom0_id, atom2_id, id_cluster);
+                                             T djk = get_dist(atom1_id, atom2_id, id_cluster);
 
                                              for (int ip = 0; ip < np; ip ++){
 
@@ -474,7 +491,7 @@ for(size_t id_pair = id_batch; id_pair< (id_batch+ Pair_Batch) && id_pair < NClu
                                                   // size_t c = b + ip ;
                                                   // std::cout << c << " ";
 
-                                                  G[atom0_id][id_pair][offset_by_rel + ip ]  +=    get_Gangular(dij, dik, djk, p[ip*nc + COL_ANG_ETA], p[ip*nc + COL_ANG_ZETA], p[ip*nc + COL_ANG_LAMBD]) ;
+                                                  G0[id_cluster][offset_by_rel + ip ]  +=    get_Gangular(dij, dik, djk, p[ip*nc + COL_ANG_ETA], p[ip*nc + COL_ANG_ZETA], p[ip*nc + COL_ANG_LAMBD]) ;
                                              }
 
                                              // print some nice endline
@@ -487,15 +504,15 @@ for(size_t id_pair = id_batch; id_pair< (id_batch+ Pair_Batch) && id_pair < NClu
                                              // test the selected atoms ! 
                                              // std::cout << atom0_id << "  " << atom1_id << "  " << atom2_id << std::endl;
 
-// for (size_t id_batch = 0; id_batch < NCluster; id_batch += Pair_Batch){
+// for (size_t batchstart = 0; batchstart < NCluster; batchstart += Cluster_Batch){
 #ifdef _OPENMP
-#pragma omp parallel for simd shared(atom0_id, atom1_id, atom2_id, id_batch, Pair_Batch, np, nc, G, offset_by_rel, COL_ANG_ETA, COL_ANG_ZETA, COL_ANG_LAMBD)
+#pragma omp parallel for simd shared(atom0_id, atom1_id, atom2_id, batchstart, batchlimit, np, nc, G0, offset_by_rel, COL_ANG_ETA, COL_ANG_ZETA, COL_ANG_LAMBD)
 #endif
-for(size_t id_pair = id_batch; id_pair< (id_batch+ Pair_Batch) && id_pair < NCluster; id_pair++)
+for(size_t id_cluster = batchstart; id_cluster< batchlimit; id_cluster++)
 {
-                                             T dij = get_dist(atom0_id, atom1_id, id_pair);
-                                             T dik = get_dist(atom0_id, atom2_id, id_pair);
-                                             T djk = get_dist(atom1_id, atom2_id, id_pair);
+                                             T dij = get_dist(atom0_id, atom1_id, id_cluster);
+                                             T dik = get_dist(atom0_id, atom2_id, id_cluster);
+                                             T djk = get_dist(atom1_id, atom2_id, id_cluster);
 
                                              for (int ip = 0; ip < np; ip ++){
 
@@ -504,7 +521,7 @@ for(size_t id_pair = id_batch; id_pair< (id_batch+ Pair_Batch) && id_pair < NClu
                                                   // size_t c = b + ip ;
                                                   // std::cout << c << " ";
 
-                                                  G[atom0_id][id_pair][offset_by_rel + ip ]  +=  2*  get_Gangular(dij, dik, djk, p[ip*nc + COL_ANG_ETA], p[ip*nc + COL_ANG_ZETA], p[ip*nc + COL_ANG_LAMBD]) ;
+                                                  G0[id_cluster][offset_by_rel + ip ]  +=   get_Gangular(dij, dik, djk, p[ip*nc + COL_ANG_ETA], p[ip*nc + COL_ANG_ZETA], p[ip*nc + COL_ANG_LAMBD]) ;
                                              }
 
                                              // print some nice endline
@@ -514,154 +531,22 @@ for(size_t id_pair = id_batch; id_pair< (id_batch+ Pair_Batch) && id_pair < NClu
                                         }  // end of if type1== type2, or atom2>atom1
                                    }  // end of atom2_id
                               }  // end of atom1_id 
-                         }   // end of  if radial - else angular
-                    }  // end of atom0_id 
+                         }   // end of  atom0_id
+                    }  // end of if_radial_else_angular 
                     offset_by_rel += np;
                     relation_idx++ ;
                }  // end of rel
           }  // end of type_id
-}    // end of  Pair_Batch 
+}    // end of  Cluster_Batch 
 
-
-     // for(auto it = gparams.seq.begin(); it!=gparams.seq.end(); it++) {
-     //      // it->first  = name of atom type ;
-     //      // it->second = vector<idx_t> ;   a vector saving the list of sequence order
-     //      std::string type_name = model.TYPE_INDEX[]
-     //      int curr_idx = 0;
-     //      for(auto it2 = it->begin(); it2!=it->end(); it2++){                
-     //           // *it2 = element relationship index (=atom1_type * atom2_type * ... )
-     //           G_param_start_idx[it->first][*it2]     = curr_idx;      // The start index is the cumulative size of all relationships until now    
-     //           size_t _tmp = gparams.params[it->first][*it2].size();                              
-     //           G_param_size[it->first][*it2] = _tmp;
-     //           curr_idx +=  _tmp;        // next relatinoship               
-     //           //cout << it->first << " " << *it2 << " " << curr_idx << endl;
-     //      }          
-     //      G_param_max_size[it->first] = curr_idx;                // max capacity of this atom type
-     // }
-          
-     // // For each atom1
-     // //#pragma omp parallel for shared(model, gparams, natom, colidx, distT, ndimers, G, G_param_start_idx, G_param_max_size)
-     // for (auto at1=model.atoms.begin(); at1!=model.atoms.end(); at1++ ) {
-          
-     //      std::string atom1 = at1->second->name;                   
-     //      idx_t idx_atom1 = at1->first;
-     //      std::string atom1_type = at1->second->type;
-     //      idx_t idx_atom1_type = model.types[atom1_type]->id; 
-
-     //      //cout << " Dealing with atom : " << atom1 << " ... " << endl;          
-          
-     //      if( G_param_max_size.find(atom1_type) != G_param_max_size.end() ){
-
-     //           T** g;          
-     //           init_mtx_in_mem<T>(g, G_param_max_size[atom1_type] , ndimers);  // initialize in memory g[param, dimer_idx]
-               
-     //           T* tmp = new T[ndimers];  // a temporary space for cache
-               
-               
-     //           timers.insert_random_timer(id2, 2 , "Gfn_rad+ang_all");
-     //           timers.timer_start(id2);            
-               
-     //           // for each atom2
-     //           for(auto at2= model.atoms.begin(); at2!=model.atoms.end(); at2++ ){
-     //                std::string atom2 = at2->second->name;
-     //                if(atom1 != atom2){
-                         
-     //                     idx_t idx_atom2 = at2->first;
-     //                     std::string atom2_type = at2->second->type;
-     //                     idx_t idx_atom2_type = model.types[atom2_type]->id;
-     //                     idx_t idx_atom12 = idx_atom1_type*idx_atom2_type;
-                         
-
-     //                     // Calculate RAD when it is needed
-     //                     if ( G_param_start_idx[atom1_type].find(idx_atom12) != G_param_start_idx[atom1_type].end() ) {                     
-     //                          //cout << atom1 << " - " << atom2 << endl;                    
-     //                          size_t nrow_params =  G_param_size[atom1_type][idx_atom12];
-     //                          unsigned int icol = colidx[idx_atom1][idx_atom2] ; // col index of the distance to retrieve
-                         
-     //                          T Rs, eta;                         
-     //                          int idx_g_atom12 = G_param_start_idx[atom1_type][idx_atom12];
-
-                              
-     //                          for(int i=0 ; i< nrow_params; i++){          
-     //                               Rs   = gparams.params[atom1_type][idx_atom12][i][COL_RAD_RS];
-     //                               eta  = gparams.params[atom1_type][idx_atom12][i][COL_RAD_ETA] ;                                                                    
-     //                               timers.insert_random_timer(id, idx_atom12, "GRadial");
-     //                               timers.timer_start(id);
-     //                               get_Gradial_add(g[idx_g_atom12+i], distT[icol], ndimers, Rs, eta, tmp);         
-     //                               timers.timer_end(id);
-     //                          }   
-     //                     }
-
-
-                         
-     //                     timers.insert_random_timer(id1, 3, "Gfn_ang_all");
-     //                     timers.timer_start(id1);                      
-                         
-     //                     for(auto at3=next(at2,1) ; at3!=model.atoms.end(); at3++){
-     //                          std::string atom3 = at3->second->name;
-     //                          if(atom3 != atom1) {
-     //                               idx_t idx_atom3 = at3->first;
-     //                               std::string atom3_type = at3->second->type;
-     //                               idx_t idx_atom3_type = model.types[atom3_type]->id;
-     //                               idx_t idx_atom123 = idx_atom12*idx_atom3_type;
-
-     //                               if( G_param_start_idx[atom1_type].find(idx_atom123) != G_param_start_idx[atom1_type].end() ) {
-                                   
-     //                                    //cout << atom1 << " - " << atom2 << " - " << atom3 << endl;                      
-     //                                    unsigned int icol = colidx[idx_atom1][idx_atom2] ;  // col index of the distance to retrieve
-     //                                    unsigned int icol2 = colidx[idx_atom1][idx_atom3] ; // col index of the distance to retrieve
-     //                                    unsigned int icol3 = colidx[idx_atom2][idx_atom3] ; // col index of the distance to retrieve
-     //                                    size_t nrow_params =  gparams.params[atom1_type][idx_atom123].size();                              
-                                        
-     //                                    T lambd, zeta, eta;
-     //                                    int idx_g_atom123 = G_param_start_idx[atom1_type][idx_atom123];
-
-     //                                    for(int i=0 ; i< nrow_params; i++){      
-     //                                         lambd = gparams.params[atom1_type][idx_atom123][i][COL_ANG_LAMBD];
-     //                                         eta   = gparams.params[atom1_type][idx_atom123][i][COL_ANG_ETA];
-     //                                         zeta  = gparams.params[atom1_type][idx_atom123][i][COL_ANG_ZETA];                    
-     //                                         timers.insert_random_timer(id, idx_atom123, "GAngular");
-     //                                         timers.timer_start(id);
-     //                                         get_Gangular_add(g[idx_g_atom123+i], distT[icol], distT[icol2], distT[icol3], ndimers, eta, zeta, lambd, tmp);         
-     //                                         timers.timer_end(id, true, false);        
-     //                                    } 
-     //                               } 
-
-     //                          }                         
-     //                     }
-                         
-     //                     timers.timer_end(id1);
-     //                }     
-     //           }          
-     //           delete[] tmp;
-               
-     //           // Save results to G-fn
-     //           G[at1->first] = g;
-
-     //           timers.timer_end(id2);                                       
-     //      }
-     // }
-     
-	// //scale by max_per_feature(from files) -- cutoff replacement
-	// T ** max = nullptr;
-	// size_t rows,cols;
-	// int index = 0;
-     // for (auto it = G.begin(); it != G.end(); it++){
-	// 	std::string fileName = "./max_per_feature/" + model.atoms[it->first]->type + std::to_string(index) + "_max";	
-	// 	read2DArrayfile(max, rows, cols, fileName.c_str());
-
-	// 	for(int N = 0; N<ndimers;N++){
-	// 		for(int j = 0; j<rows;j++){
-	// 			it->second[j][N]/=max[j][0];
-	// 		}
-	// 	}	
-	// 	index++;
-	// }
-
-	
      timers.timer_end(id3);
+
+}
      timers.get_all_timers_info();
      timers.get_time_collections();
+
+
+
 };
 
 
