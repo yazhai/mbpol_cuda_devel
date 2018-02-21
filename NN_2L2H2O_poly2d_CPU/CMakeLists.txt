@@ -12,8 +12,8 @@ option(_CMP_GNU "use gnu c++ compiler" 1)
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
-#source code folder
-set(SRC ${CMAKE_SOURCE_DIR}/src)
+message(${CMAKE_SOURCE_DIR})
+
 
 #set compiler
 if(${_CMP_INTEL})
@@ -27,24 +27,21 @@ endif(${_CMP_INTEL})
 #resource folder
 set(RES_DIR ${CMAKE_SOURCE_DIR}/res/BPNN-2b)
 
+#resource files
+file(GLOB RES "${RES_DIR}/*")
+
+#source code folder
+set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
+
 #set all source files
-set(SOURCES 	${SRC}/Gfunction.cpp 
-		${SRC}/atomTypeID.cpp 
-		${SRC}/network.cpp 
-		${SRC}/readGparams.cpp
-		${SRC}/timestamps.cpp 
-		${SRC}/utility.cpp 
-		${SRC}/atomTypeID_v2.cpp
-		${SRC}/fullTester.cpp)
-#set resource files
-set(RESOURCES 	${RES_DIR}/Gfn_order.dat
-	      	${RES_DIR}/Gfunc_params_2Bv14.dat 
-		${RES_DIR}/2b_to_fit_rounded.xyz
-		${RES_DIR}/max_per_feature)
+file(GLOB SRC "${SRC_DIR}/*")
 
-file(COPY  ${RESOURCES} DESTINATION ${CMAKE_BINARY_DIR})
 
-add_executable(Full_NN ${SOURCES})
+file(COPY  ${RES} DESTINATION ${CMAKE_BINARY_DIR})
+
+add_executable(Full_NN ${SRC})
+
+include_directories(${CMAKE_SOURCE_DIR}/inc)
 
 #install(TARGETS Full_NN DESTINATION bin)
 

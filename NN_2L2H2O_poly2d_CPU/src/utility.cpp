@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 #include <iostream>
 #include <sstream>
@@ -15,7 +16,6 @@
 #include <string>
 
 #include "utility.h"
-#include "atomTypeID.h"
 
 // Define the cblas library 
 #ifdef _USE_GSL
@@ -301,6 +301,9 @@ bool getCmdLineArgumentString(const int argc, const char **argv,
 
 //templated function definitions//
 
+//==============================================================================
+//
+// Initialize a matrix in consecutive memory
 template <typename T>
 bool init_mtx_in_mem(T** & data, size_t rows, size_t cols){
      try{          
@@ -323,6 +326,10 @@ bool init_mtx_in_mem(T** & data, size_t rows, size_t cols){
      }
 }
 
+
+//==============================================================================
+//
+// Check if a string is a float number
 template <typename T>
 bool IsFloat( std::string myString ) {
     std::istringstream iss(myString);
@@ -332,6 +339,11 @@ bool IsFloat( std::string myString ) {
     return iss.eof() && !iss.fail(); 
 }
 
+
+//==============================================================================
+//
+// Memory management functions
+//
 template <typename T>
 void clearMemo(T** & data){
      if (data != nullptr) {
@@ -362,7 +374,9 @@ void clearMemo(std::map<std::string, T**> & data){
 }
 
 
-
+//==============================================================================
+//
+// Read in a 2D array from file and save to  **data / rows / cols
 template <typename T>
 int read2DArrayfile(T** & data, size_t& rows, size_t& cols, const char* file, int titleline=0){
     try { 
@@ -474,6 +488,9 @@ int read2DArray_with_max_thredhold(T** & data, size_t& rows, size_t& cols, const
     }
 };
 
+//========================================================================================
+// 2D array transpose
+//
 template <typename T>
 void transpose_mtx(T** & datdst,  T** datrsc,  size_t nrow_rsc, size_t ncol_rsc)
 {
@@ -496,6 +513,10 @@ void transpose_mtx(T** & datdst,  T** datrsc,  size_t nrow_rsc, size_t ncol_rsc)
      }
 };
 
+
+//===============================================================================                                     
+//
+// Matrix normalization utility functions
 template<typename T>
 void get_max_each_row(T*& rst,  T* src,  size_t src_rows, size_t src_cols, long int col_start, long int col_end){ 
           if(col_end < 0) col_end = src_cols + col_end ;  // change negative column index to positive        
@@ -543,6 +564,10 @@ void norm_rows_by_maxabs_in_each_row(T* src_mtx, size_t src_rows, size_t src_col
      delete[] norms;
 }
 
+
+
+
+//Instantiate all non-template class/struct/method of specific type
 template bool init_mtx_in_mem<unsigned int>(unsigned int ** & data, size_t rows, size_t cols);
 
 template bool IsFloat<double>( std::string myString );

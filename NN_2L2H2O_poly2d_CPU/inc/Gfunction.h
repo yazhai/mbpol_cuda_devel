@@ -41,52 +41,14 @@ private:
 //===========================================================================================
 //
 // Matrix Elementary functions
-//T cutoff(T R, T R_cut = 10);
-//T get_cos(T Rij, T Rik, T Rjk);
-//T get_Gradial(T Rs, T eta, T  Rij);
-//T get_Gangular(T Rij, T Rik, T Rjk, T eta, T zeta, T lambd);
-
-T cutoff(T R, T R_cut=10) {
-    T f=0.0;
-    if (R < R_cut) {    
-        //T t =  tanh(1.0 - R/R_cut) ;   // avoid using `tanh`, which costs more than `exp` 
-        T t =  1.0 - R/R_cut;        
-        t = exp(2*t);
-        t = (t-1) / (t+1);                
-        f = t * t * t ;        
-    }
-    return 1 ;
-}
 
 
-T get_cos(T Rij, T Rik, T Rjk) {
-    //cosine of the angle between two vectors ij and ik    
-    T Rijxik = Rij*Rik ;    
-    if ( Rijxik != 0 ) {
-          return ( ( Rij*Rij + Rik*Rik - Rjk*Rjk )/ (2.0 * Rijxik) );
-    } else {
-          return  std::numeric_limits<T>::infinity();
-    }
-}
+T cutoff(T R, T R_cut=10);
+T get_cos(T Rij, T Rik, T Rjk);
+T get_Gradial(T  Rij, T Rs, T eta);
+T get_Gangular(T Rij, T Rik, T Rjk, T eta, T zeta, T lambd);    
 
 
-T get_Gradial(T  Rij, T Rs, T eta){
-     T G_rad = cutoff(Rij);     
-     if ( G_rad > 0 ) {
-          G_rad *= exp( -eta * ( (Rij-Rs)*(Rij-Rs) )  )  ;
-     }
-     return G_rad;
-}
-
-
-T get_Gangular(T Rij, T Rik, T Rjk, T eta, T zeta, T lambd){    
-    T G_ang = cutoff(Rij)*cutoff(Rik)*cutoff(Rjk);    
-    if ( G_ang > 0) {    
-          G_ang *=   2 * pow( (1.0 + lambd* get_cos(Rij, Rik, Rjk))/2.0, zeta) 
-                     * exp(-eta*  ( (Rij+Rik+Rjk)*(Rij+Rik+Rjk) ) );    
-    } 
-    return G_ang ;    
-}
 
 
 //===========================================================================================

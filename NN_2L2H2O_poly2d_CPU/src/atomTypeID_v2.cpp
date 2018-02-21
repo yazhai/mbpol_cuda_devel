@@ -13,6 +13,7 @@
 
 using namespace std;
 
+//private helper function to load one xyz block from file to vector
 template<typename T>
 int atom_Type_ID_t2<T>::load_xyz_oneblock(std::ifstream& ifs, std::vector<T>& xyz, bool if_update){
     std::string line;
@@ -77,6 +78,7 @@ template<typename T>
  atom_Type_ID_t2<T>::~atom_Type_ID_t2(){
     clearMemo(XYZ);   
 };
+
 
 
 template<typename T>
@@ -197,6 +199,8 @@ int atom_Type_ID_t2<T>::read_seq_from_file(const char* _file) {
     }
 };
 
+
+//Instantiate all non-template class of specific type
 template class atom_Type_ID_t2<double>;
 template class atom_Type_ID_t2<float>;
 

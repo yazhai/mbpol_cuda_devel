@@ -96,64 +96,66 @@ void Gfunction_t<float>::get_Gangular_add(float* rst, float* Rij, float* Rik, fl
 
 
 
+/* TEMPLATE METHOD DEFINITIONS */
 
-//================================================================================
-// tester
-/*
-int main(int argc, char** argv){ 
+/*Private Methods*/
 
-     cout << "Usage:  THIS.EXE  DISTANCE_FILE  [-" << FLAG_DISTFILE_HEADLINE << "=1]"
-          << "[-" << FLAG_COLUMN_INDEX_FILE  << "=NONE]"  
-          << "[-" << FLAG_PARAM_FILE         << "=H_rad|H_ang|O_rad|O_ang]"
-          << "[-" << FLAG_ATOM_ORDER_FILE    << "=NONE]"
-          << endl << endl;
-
-
-     Gfunction_t gf;     // the G-function
-     
-     // distance file headline
-     int distheadline = getCmdLineArgumentInt(argc, (const char **)argv, FLAG_DISTFILE_HEADLINE);     
-     if(distheadline==0) distheadline=1;     // a special line for test case
-          
-     // column index file
-     string colidxfile;
-     getCmdLineArgumentString(argc, (const char **)argv, FLAG_COLUMN_INDEX_FILE, colidxfile);
-     
-     
-     // parameter file
-     string paramfile;
-     getCmdLineArgumentString(argc, (const char **)argv, FLAG_PARAM_FILE, paramfile);
-     
-     
-     // atom order file
-     string ordfile;
-     getCmdLineArgumentString(argc, (const char **)argv, FLAG_ATOM_ORDER_FILE, ordfile);          
-          
-
-     // make_G(distfile, distheadline, column_idx file, param file, order file)
-     gf.make_G(argv[1], distheadline, colidxfile.c_str(), paramfile.c_str(), ordfile.c_str());
-     // resutls saved in gf.G which is a map<string:atom_type, double**>
-     
-     
-     
-     // Show results
-     std::cout.precision(std::numeric_limits<double>::digits10+1);  
-     for(auto it= gf.G.begin(); it!=gf.G.end(); it++){
-          string atom         = gf.model.atoms[it->first]->name;
-          string atom_type    = gf.model.atoms[it->first]->type;
-          cout << " G-fn : " << atom << " = " << endl;          
-          for(int ii=0; ii<3; ii++){
-               for(int jj=0; jj<gf.G_param_max_size[atom_type]; jj++){
-                    if ((jj>0)&&( jj%3 ==0 ) ) cout << endl;
-                    cout << fixed << setw(16) << it->second[jj][ii] << " " ;                       
-               }
-          cout << endl;
-          }               
-     }
-     
-    
-     return 0;
+//===========================================================================================
+//
+// Matrix Elementary functions
+template <typename T>
+T Gfunction_t<T>::cutoff(T R, T R_cut) {
+    T f=0.0;
+    if (R < R_cut) {    
+        //T t =  tanh(1.0 - R/R_cut) ;   // avoid using `tanh`, which costs more than `exp` 
+        T t =  1.0 - R/R_cut;        
+        t = exp(2*t);
+        t = (t-1) / (t+1);                
+        f = t * t * t ;        
+    }
+    return 1 ;
 }
-*/
 
+template <typename T>
+T Gfunction_t<T>::get_cos(T Rij, T Rik, T Rjk) {
+    //cosine of the angle between two vectors ij and ik    
+    T Rijxik = Rij*Rik ;    
+    if ( Rijxik != 0 ) {
+          return ( ( Rij*Rij + Rik*Rik - Rjk*Rjk )/ (2.0 * Rijxik) );
+    } else {
+          return  std::numeric_limits<T>::infinity();
+    }
+}
+
+template <typename T>
+T Gfunction_t<T>::get_Gradial(T  Rij, T Rs, T eta){
+     T G_rad = cutoff(Rij);     
+     if ( G_rad > 0 ) {
+          G_rad *= exp( -eta * ( (Rij-Rs)*(Rij-Rs) )  )  ;
+     }
+     return G_rad;
+}
+
+template <typename T>
+T Gfunction_t<T>::get_Gangular(T Rij, T Rik, T Rjk, T eta, T zeta, T lambd){    
+    T G_ang = cutoff(Rij)*cutoff(Rik)*cutoff(Rjk);    
+    if ( G_ang > 0) {    
+          G_ang *=   2 * pow( (1.0 + lambd* get_cos(Rij, Rik, Rjk))/2.0, zeta) 
+                     * exp(-eta*  ( (Rij+Rik+Rjk)*(Rij+Rik+Rjk) ) );    
+    } 
+    return G_ang ;    
+}
+
+//Instantiate all non-template class/struct/method of specific type
+template double Gfunction_t<double>::cutoff(double R, double R_cut);
+template float Gfunction_t<float>::cutoff(float R, float R_cut);
+
+template double Gfunction_t<double>::get_cos(double Rij, double Rik, double Rjk);
+template float Gfunction_t<float>::get_cos(float Rij, float Rik, float Rjk);
+
+template double Gfunction_t<double>::get_Gradial(double Rij, double Rs, double eta);
+template float Gfunction_t<float>::get_Gradial(float Rij, float Rs, float eta);
+
+template double Gfunction_t<double>::get_Gangular(double Rij, double Rik, double Rjk, double eta, double zeta, double lambd);
+template float Gfunction_t<float>::get_Gangular(float Rij, float Rik, float Rjk, float eta, float zeta, float lambd);
 

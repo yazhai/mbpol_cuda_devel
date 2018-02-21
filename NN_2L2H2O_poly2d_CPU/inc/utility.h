@@ -4,38 +4,9 @@
 
 
 #include <limits>
-#include <cstdlib>
-#include <iomanip>
-#include <utility>
-#include <cstddef>
 #include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-
-#include <iostream>
-#include <sstream>
-#include <fstream>
-
-#include <vector>
-#include <map>
-#include <string>
 
 #include "atomTypeID.h"
-
-// Define the cblas library 
-#ifdef _USE_GSL
-#include <gsl/gsl_cblas.h>
-#elif _USE_MKL
-#include <mkl_cblas.h>
-#else
-//#include <gsl/gsl_cblas.h>
-#endif
-
-
-#ifdef _OPENMP
-#include <omp.h>
-#endif 
-
 
 //==============================================================================
 // A 2D-array type based on vector
@@ -71,7 +42,6 @@ void clearMemo(std::map<std::string, T**> & data);
 //==============================================================================
 //
 // Initialize a matrix in consecutive memory
-
 template <typename T>
 bool init_mtx_in_mem(T** & data, size_t rows, size_t cols);
 
@@ -167,4 +137,49 @@ bool getCmdLineArgumentString(const int argc, const char **argv,
                                      const char *string_ref, std::string & string_retval);
                                                                         
 
+
+
+//allowed types
+extern template bool init_mtx_in_mem<unsigned int>(unsigned int ** & data, size_t rows, size_t cols);
+
+extern template bool IsFloat<double>( std::string myString );
+extern template bool IsFloat<float>( std::string myString );
+
+extern template void clearMemo<double> (double ** & data);
+extern template void clearMemo<float>(float ** & data);
+extern template void clearMemo<unsigned int>(unsigned int ** & data);
+
+extern template void clearMemo<double>(std::vector<double**> & data);
+extern template void clearMemo<float>(std::vector<float**> & data);
+extern template void clearMemo<unsigned int>(std::vector<unsigned int**> & data);
+
+extern template void clearMemo<double>(std::map<std::string, double**> & data);
+extern template void clearMemo<float>(std::map<std::string, float**> & data);
+extern template void clearMemo<unsigned int>(std::map<std::string, unsigned int**> & data);
+
+extern template int read2DArrayfile<double>(double** & data, size_t& rows, size_t& cols, const char* file, int titleline=0);
+extern template int read2DArrayfile<float>(float** & data, size_t& rows, size_t& cols, const char* file, int titleline=0);
+
+extern template int read2DArray_with_max_thredhold<double>(double** & data, size_t& rows, size_t& cols, const char* file, int titleline, 
+                                            int thredhold_col, double thredhold_max);
+extern template int read2DArray_with_max_thredhold<float>(float ** & data, size_t& rows, size_t& cols, const char* file, int titleline, 
+                                            int thredhold_col, float thredhold_max);
+
+extern template void transpose_mtx<double>(double** & datdst,  double** datrsc,  size_t nrow_rsc, size_t ncol_rsc);
+extern template void transpose_mtx<float>(float** & datdst,  float** datrsc,  size_t nrow_rsc, size_t ncol_rsc);
+
+extern template void get_max_each_row<double>(double *& rst,  double* src,  size_t src_rows, size_t src_cols, 
+                        long int col_start, long int col_end); 
+extern template void get_max_each_row<float>(  float *& rst,   float* src,  size_t src_rows, size_t src_cols, 
+                        long int col_start, long int col_end); 
+
+extern template void norm_rows_in_mtx_by_col_vector<double>(double* src_mtx, size_t src_rows, size_t src_cols, double* scale_vec, 
+                        long int col_start=0, long int col_end=-1 );
+extern template void norm_rows_in_mtx_by_col_vector<float>(float* src_mtx, size_t src_rows, size_t src_cols, float* scale_vec, 
+                        long int col_start=0, long int col_end=-1 );
+
+extern template void norm_rows_by_maxabs_in_each_row<double>(double* src_mtx, size_t src_rows, size_t src_cols, long int max_start_col, 
+        long int max_end_col, long int norm_start_col , long int norm_end_col);
+extern template void norm_rows_by_maxabs_in_each_row<float>(float* src_mtx, size_t src_rows, size_t src_cols, long int max_start_col, 
+        long int max_end_col, long int norm_start_col , long int norm_end_col);
 #endif

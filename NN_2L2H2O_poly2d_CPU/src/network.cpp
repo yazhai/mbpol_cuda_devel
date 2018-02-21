@@ -6,22 +6,14 @@
 #include <limits>
 #include <vector>
 #include <math.h>
+#include <H5Cpp.h>
+#include <memory>
+#include <iomanip>
 
 #include "utility.h"
 #include "network.h"
 #include "timestamps.h"
-
-//old implementation
-//#define INFILE_S 	"/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/NN_in_Single.in"	//Input Data, Single
-//#define INFILE_D	"/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/NN_in_Double.in"	//Input Data, Double
-//#define INFILE1     "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/32_2b_nn_single.hdf5"     // HDF5 files for different precisions Layer Data
-//#define INFILE2     "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/32_2b_nn_double.hdf5"
-//#define CHECKCHAR1  "W"                 // dense_1_[W]           for "W"
-//#define CHECKCHAR2  "l"                 // dense_1/kerne[l]      for "l"
-
-//input file parameters
-#define SAMPLECOUNT 11                  // input sample count(N)
-#define SAMPLEDIM   69                  // each input sample's dim(input) 
+#include "readhdf5.hpp"
 
 // Define the cblas library 
 #ifdef _USE_GSL
@@ -36,10 +28,34 @@
 #include <omp.h>
 #endif 
 
-
 using namespace std;
 
-/**************************Layer_t struct function definitions- /**************************/
+//***********************************************************************************
+// Structure of Network:
+//		dimensions: N = number of samples, input = sample input Dimension, 
+//			output = sample output dimension
+//		Layer Weights: Inputed as  input x output dimensional array
+//					-stored as output x input dimensional array(transpose(weights))
+//		Layer Bias:	Inputed as 1xoutput dimensional array
+//						extended to Nxoutput dimensional array for computation
+//		Layer Input:	Inputed as N x input dimensional array
+//		
+//		At each Dense Layer:
+//		Output = Input*Weights + Bias
+//		
+//		OR: Output = transpose(Weights) * transpose(Input) + transpose(Bias)
+//
+//		This second method is used in the code in order to take advantage of 
+//		rowMajor memory storage.
+//
+//		Weights Matrix is transposed when layer is initialized, while Input data
+//			is transposed in the predict method of Layer_Net_t (before forward 
+//			propagation through the network begins). Transposing Bias is trivial.
+//***********************************************************************************
+
+
+
+/* Layer_t struct method definitions */
 
 //Default constructor
 template<typename T>
@@ -103,7 +119,10 @@ Layer_t<T>::~Layer_t(){
 
 
 
+/* network_t class method definitions */
 
+//non-cblas implementation of fully Connected Forward Propogation.
+//Weights matrix and srcData are already transposed for optimal computation
 template<typename T>
 void network_t<T>::fullyConnectedForward(const Layer_t<T> & layer,
 						size_t & input, size_t & output, size_t & N,
@@ -147,7 +166,6 @@ void network_t<T>::fullyConnectedForward(const Layer_t<T> & layer,
 	input = output;
 } 
 
-
 //non-cblas implementaiton of forward propogation activation function(TANH)
 template <typename T>
 void network_t<T>::activationForward_TANH(const int & output,const int & N , T** srcData, T** & dstData){	
@@ -173,9 +191,6 @@ void network_t<T>::activationForward_TANH(const int & output,const int & N , T**
 	}
 }	
 		
-
-
-
 //cblas implementations of double and single precision forward dense layer
 //Input and layer.Weights already transposed for optimal row-major computation.
 #if defined (_USE_GSL) || defined (_USE_MKL)
@@ -240,6 +255,10 @@ void network_t<float>::fullyConnectedForward(const Layer_t<float> & layer,
 #endif
 
 
+
+/* Layer_Net_t class method definitions */
+
+//helper function: switch two pointers to pointers
 template <typename T>
 void Layer_Net_t<T>::switchptr(T** & alpha, T** & bravo){ 
 	T** tmp;
@@ -249,6 +268,7 @@ void Layer_Net_t<T>::switchptr(T** & alpha, T** & bravo){
 	tmp = nullptr;
 }
 
+//Delete all layers, from end to root.
 template <typename T>
 Layer_Net_t<T>::~Layer_Net_t(){
 	Layer_t<T>* curr = nullptr;
@@ -266,6 +286,7 @@ Layer_Net_t<T>::~Layer_Net_t(){
 	}
 }
 
+//inserting a dense layer
 template <typename T>
 void Layer_Net_t<T>::insert_layer(string &_name, size_t _inputs, size_t _outputs, 
 		T * & _weights, T * & _bias){
@@ -280,6 +301,7 @@ void Layer_Net_t<T>::insert_layer(string &_name, size_t _inputs, size_t _outputs
 	}
 }
 
+// Inserting an activiation layer by type (int)
 template <typename T>
  void Layer_Net_t<T>::insert_layer(string &_name, int _acttype){
 		if (root!=NULL) {
@@ -293,6 +315,7 @@ template <typename T>
 	}
 }
 
+//Inserting an activation layer by type(enum)
 template <typename T>
 void Layer_Net_t<T>::insert_layer(string &_name, ActType_t _acttype){
 	if (root!=NULL) {
@@ -307,6 +330,7 @@ void Layer_Net_t<T>::insert_layer(string &_name, ActType_t _acttype){
 	
 }
 
+// Get layer ptr according to its index (start from 1 as 1st layer, 2 as second layer ...)
 template <typename T>
 Layer_t<T>* Layer_Net_t<T>::get_layer_by_seq(int _n){
 	Layer_t<T>* curr=root;
@@ -318,7 +342,8 @@ Layer_t<T>* Layer_Net_t<T>::get_layer_by_seq(int _n){
 	};
 	return curr;
 } 
-	
+
+//Move through network and make prediction based on all layers.	
 template <typename T>
 void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData, unsigned long int& _outsize){
 		if (root != NULL) {
@@ -400,6 +425,22 @@ void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData
 }	 
 
 
+
+
+/* TESTER FUNCTION 
+	Input:	filename -- weights and bias datafile -- defined in "fullTester.cpp"
+			checkchar - character used in processing datafile to differentiate between weights and biases -- defined in "fullTester.cpp"
+			input -- 2-d array of Gfn outputs (numAtoms x (N*sampleDim[i]))
+			numAtoms -- number of atoms to be proccessed (first dimension of input array)
+			sampleCount -- N, the number of samples for each atom (second dimension of input array)
+			sampleDim -- a 1 x numAtoms sized array containing information for the number of inputs per sample
+	Result:
+			Printing of first/last 10 scores for each atom
+			Printing of first/last 10 scores for the final output(summation of all atoms)
+			Store all scores of each atom in file -- "NN_final.out"
+			Store final output score(summation of all atoms scores) in file -- "my_y_pred.txt"
+			The above file can be compared with file "y_pred.txt" which contains outputs from python implementation
+*/
 template <typename T>
 void runtester(const char* filename, const char* checkchar, T** input, size_t numAtoms, size_t sampleCount, size_t * sampleDim){
 
@@ -408,15 +449,15 @@ void runtester(const char* filename, const char* checkchar, T** input, size_t nu
 	ofstream outputFile;
 	string filePath = "NN_final.out";
      // initialize memory for rank, dims, and data
-     hsize_t data_rank=0;
-     hsize_t* data_dims = nullptr;
-     T* data = nullptr;     
+    hsize_t data_rank=0;
+    hsize_t* data_dims = nullptr;
+    T* data = nullptr;     
      
-     hsize_t bias_rank=0;
-     hsize_t* bias_dims = nullptr;
-     T* bias = nullptr;
+    hsize_t bias_rank=0;
+    hsize_t* bias_dims = nullptr;
+    T* bias = nullptr;
      
-     Layer_Net_t<T> layers_1;
+    Layer_Net_t<T> layers_1;
 	Layer_Net_t<T> layers_2;
 
 	Layer_Net_t<T> * currentNet = nullptr;
@@ -635,6 +676,8 @@ void runtester(const char* filename, const char* checkchar, T** input, size_t nu
      return;
 }
 
+
+//Instantiate all non-template class/struct/method of specific type
 template struct Layer_t<double>;
 template struct Layer_t<float>;
 
@@ -645,13 +688,12 @@ template class network_t<float>;
 template class Layer_Net_t<double>;
 template class Layer_Net_t<float>;
 
-
 template void runtester<double>(const char* filename, const char* checkchar, double ** input, size_t numAtoms, 
-						size_t sampleCount, size_t * sampleDim);
+ 						size_t sampleCount, size_t * sampleDim);
 
 
 template void runtester<float>(const char* filename, const char* checkchar, float ** input, size_t numAtoms, 
-						size_t sampleCount, size_t * sampleDim);
+ 						size_t sampleCount, size_t * sampleDim);
 
 
 

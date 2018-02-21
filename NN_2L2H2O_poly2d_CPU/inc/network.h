@@ -2,69 +2,12 @@
 #define NETWORK_H
 
 
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <stdlib.h>
-#include <string>
-#include <algorithm>   
-#include <limits>
-#include <vector>
-#include <math.h>
-#include <H5Cpp.h>
-#include <memory>
-#include <iomanip>
-
-#include "utility.h"
-#include "readhdf5.hpp"
+#define MAXSHOWRESULT 20                // Max count of result to show for each layer output
 
 //hdf5 file things
 #define PATHTOMODEL "/model_weights"    // usual path to the group saving all the layers in HDF5 file
 #define LAYERNAMES  "layer_names"       // Attribute name saving the list of layer names in HDF5
 #define WEIGHTNAMES "weight_names"      // Attribute name saving the list of weight names in HDF5
-
-//NN constants
-#define LASTATVID   12				//The sequence ID of last activiation layer.
-#define MAXSHOWRESULT 20                // Max count of result to show
-
-// Define the cblas library 
-#ifdef _USE_GSL
-#include <gsl/gsl_cblas.h>
-#elif _USE_MKL
-#include <mkl_cblas.h>
-#else
-//#include <gsl/gsl_cblas.h>
-#endif
-
-//define openMP
-#ifdef _OPENMP
-#include <omp.h>
-#endif 
-
-//***********************************************************************************
-// Structure of Network:
-//		dimensions: N = number of samples, input = sample input Dimension, 
-//			output = sample output dimension
-//		Layer Weights: Inputed as  input x output dimensional array
-//					-stored as output x input dimensional array(transpose(weights))
-//		Layer Bias:	Inputed as 1xoutput dimensional array
-//						extended to Nxoutput dimensional array for computation
-//		Layer Input:	Inputed as N x input dimensional array
-//		
-//		At each Dense Layer:
-//		Output = Input*Weights + Bias
-//		
-//		OR: Output = transpose(Weights) * transpose(Input) + transpose(Bias)
-//
-//		This second method is used in the code in order to take advantage of 
-//		rowMajor memory storage.
-//
-//		Weights Matrix is transposed when layer is initialized, while Input data
-//			is transposed in the predict method of Layer_Net_t (before forward 
-//			propagation through the network begins). Transposing Bias is trivial.
-//***********************************************************************************
-
-using namespace std;
 
 
 //Type of Layer
@@ -88,7 +31,7 @@ of layer, and dimensions of layer
 */
 template<typename T>
 struct Layer_t{
-	string name;
+	std::string name;
 	Type_t type;
 	ActType_t acttype;
  	
@@ -104,13 +47,13 @@ struct Layer_t{
 	Layer_t();
 
 	//Dense Layer Constructor
-	Layer_t(string _name, size_t _inputs, size_t outputs,T* _weights, T* _bias);
+	Layer_t(std::string _name, size_t _inputs, size_t outputs,T* _weights, T* _bias);
 
 	//Activation Layer Constructor(using integer as type)
-	Layer_t(string _name, int _acttype);
+	Layer_t(std::string _name, int _acttype);
 
 	//Activation Layer Constructor(using enum ActType_t)
-	Layer_t(string _name, ActType_t _acttype);
+	Layer_t(std::string _name, ActType_t _acttype);
 
 	//Destructor
 	~Layer_t();
@@ -169,14 +112,14 @@ public:
 	~Layer_Net_t();
 	
 	//inserting a dense layer
-	void insert_layer(string &_name, size_t _inputs, size_t _outputs, 
+	void insert_layer(std::string &_name, size_t _inputs, size_t _outputs, 
           T * & _weights, T * & _bias);
 
 	// Inserting an activiation layer by type (int)
-	void insert_layer(string &_name, int _acttype);
+	void insert_layer(std::string &_name, int _acttype);
 
 	//Inserting an activation layer by type(enum)
-	void insert_layer(string &_name, ActType_t _acttype);
+	void insert_layer(std::string &_name, ActType_t _acttype);
 
 
 	// Get layer ptr according to its index (start from 1 as 1st layer, 2 as second layer ...)
@@ -188,10 +131,10 @@ public:
 
 
 
-/* TESTER FUNCTION using datafile "16.hdf6" for weights and bias
-	Input:	filename -- weights and bias datafile -- "16.hdf5"
-			checkchar - character used in processing datafile to differentiate between weights and biases
-			input -- 2d array of Gfn outputs (numAtoms x (N*sampleDim[i]))
+/* TESTER FUNCTION 
+	Input:	filename -- weights and bias datafile -- defined in "fullTester.cpp"
+			checkchar - character used in processing datafile to differentiate between weights and biases -- defined in "fullTester.cpp"
+			input -- 2-d array of Gfn outputs (numAtoms x (N*sampleDim[i]))
 			numAtoms -- number of atoms to be proccessed (first dimension of input array)
 			sampleCount -- N, the number of samples for each atom (second dimension of input array)
 			sampleDim -- a 1 x numAtoms sized array containing information for the number of inputs per sample
@@ -204,5 +147,24 @@ public:
 */
 template <typename T>
 void runtester(const char* filename, const char* checkchar, T** input, size_t numAtoms, size_t sampleCount, size_t * sampleDim);
+
+
+//Allowed Types
+extern template struct Layer_t<double>;
+extern template struct Layer_t<float>;
+
+extern template class network_t<double>;
+extern template class network_t<float>;
+
+extern template class Layer_Net_t<double>;
+extern template class Layer_Net_t<float>;
+
+extern template void runtester<double>(const char* filename, const char* checkchar, double ** input, size_t numAtoms, 
+						size_t sampleCount, size_t * sampleDim);
+
+
+extern template void runtester<float>(const char* filename, const char* checkchar, float ** input, size_t numAtoms, 
+						size_t sampleCount, size_t * sampleDim);
+
 
 #endif
