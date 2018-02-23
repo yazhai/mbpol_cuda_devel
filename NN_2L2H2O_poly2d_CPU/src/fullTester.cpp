@@ -123,8 +123,14 @@ int main(int argc, char** argv){
 			string atomType = std::to_string(gf.model.TYPE_EACHATOM[i]);
 			string atomNum = std::to_string(i);
 			gfuncOutPath = gfuncOutPrefix+atomType+"_"+atomNum;
+			cout<<gfuncOutPath<<endl;
+			cout<<"DOES THIS WORK?"<<endl;
+		
 			gfuncOut.open(gfuncOutPath);
-			cout<<"inputDim " << atomType<<atomNum<<" inputDim[i] " << "N: "<< N<<endl;
+
+			cout<<"YES"<<endl;
+
+			cout<<"inputDim " << atomType<<atomNum<<"  " << inputDim[i]  << " N: "<< N<<endl;
 			for(int j=0;j<N;j++){
 				for(int k=0;k<inputDim[i];k++){
 					gfuncOut<<setprecision(18)<<scientific<<(*it)[j][k]<<" ";
