@@ -217,7 +217,6 @@ public:
 
      // load atom xyz
      int load_xyz(const char* infile){
-    
          try{             
             std::ifstream ifs(infile);
             std::vector<T> xyz_all;
@@ -229,9 +228,11 @@ public:
             NCLUSTER = 1;
             while(!ifs.eof()){
                 load_xyz_oneblock(ifs, xyz_all);
+                
                 NCLUSTER ++ ;
             }
-
+            
+            NCLUSTER --;        //myedit - for some reason nclusters is one too big after processing, however xyz is correct
             init_mtx_in_mem(XYZ, NCLUSTER, NATOM*3);
 
             std::memcpy(XYZ[0], &(xyz_all[0]), sizeof(T)*NATOM*NCLUSTER*3);

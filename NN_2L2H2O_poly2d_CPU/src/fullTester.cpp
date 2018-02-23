@@ -82,7 +82,6 @@ int main(int argc, char** argv){
 	//int testIndexStart = N*TRAIN_PERCENT;
 	//N -= testIndexStart;		//effective new N(for test size) after 90% used for training
 
-	cout<<"Something"<<endl;
 	//define number of atoms
 	size_t numAtoms = gf.G.size();
 
@@ -124,11 +123,8 @@ int main(int argc, char** argv){
 			string atomNum = std::to_string(i);
 			gfuncOutPath = gfuncOutPrefix+atomType+"_"+atomNum;
 			cout<<gfuncOutPath<<endl;
-			cout<<"DOES THIS WORK?"<<endl;
 		
 			gfuncOut.open(gfuncOutPath);
-
-			cout<<"YES"<<endl;
 
 			cout<<"inputDim " << atomType<<atomNum<<"  " << inputDim[i]  << " N: "<< N<<endl;
 			for(int j=0;j<N;j++){
@@ -142,8 +138,7 @@ int main(int argc, char** argv){
 		}
 	}
 
-     cout<<("TEST 5")<<endl; 
-	cout<<"Running Network"<<endl;
+		cout<<"Running Network"<<endl;
 	runtester<double>(INFILE1,CHECKCHAR2,X,numAtoms,N,inputDim);
 
 
@@ -153,7 +148,7 @@ int main(int argc, char** argv){
 	}
 	delete [] X;
 	delete [] inputDim;
-				
+		
 				
 				
 return 0;
