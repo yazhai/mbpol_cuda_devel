@@ -24,7 +24,6 @@ private:
     // read one cluster of atoms (6 atoms in dimer and 9 in trimer) 
     int load_xyz_oneblock(std::ifstream& ifs, std::vector<T>& xyz, bool if_update=false){
         std::string line;
-
         while(getline(ifs, line)) {
             line.erase(line.begin(), std::find_if(line.begin(), line.end(), std::bind1st(std::not_equal_to<char>(), ' ')));     
             if (line.size() > 0 && line[0] != COMMENT_STARTER)  {
@@ -94,10 +93,10 @@ private:
                     natom --;
                     if(if_update) insert_atom(element);
                 };
-                break;
+                return 0;
             };
         };
-        return 0;
+        return 1;
     };
 
 
@@ -227,12 +226,10 @@ public:
             load_xyz_oneblock(ifs, xyz_all, true);
             NCLUSTER = 1;
             while(!ifs.eof()){
-                load_xyz_oneblock(ifs, xyz_all);
-                
-                NCLUSTER ++ ;
+                if ( load_xyz_oneblock(ifs, xyz_all) == 0)   NCLUSTER ++ ;
             }
             
-            NCLUSTER --;        //myedit - for some reason nclusters is one too big after processing, however xyz is correct
+            //NCLUSTER --;        //myedit - for some reason nclusters is one too big after processing, however xyz is correct
             init_mtx_in_mem(XYZ, NCLUSTER, NATOM*3);
 
             std::memcpy(XYZ[0], &(xyz_all[0]), sizeof(T)*NATOM*NCLUSTER*3);

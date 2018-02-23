@@ -46,7 +46,7 @@ include_directories(${CMAKE_SOURCE_DIR}/inc)
 #install(TARGETS Full_NN DESTINATION bin)
 
 #compiler options
-target_compile_options(Full_NN PUBLIC -std=c++11 -O3)
+target_compile_options(Full_NN PUBLIC -g -std=c++11 -O0)
 
 #set libraries
 set(LIBS hdf5 hdf5_cpp)

@@ -124,7 +124,7 @@ int main(int argc, char** argv){
 			gfuncOutPath = gfuncOutPrefix+atomType+"_"+atomNum;
 			cout<<gfuncOutPath<<endl;
 		
-			gfuncOut.open(gfuncOutPath);
+			gfuncOut.open(gfuncOutPath.c_str(), ofstream::out | ofstream::trunc );
 
 			cout<<"inputDim " << atomType<<atomNum<<"  " << inputDim[i]  << " N: "<< N<<endl;
 			for(int j=0;j<N;j++){
