@@ -20,6 +20,7 @@
 #include "network.h"
 
 #define INFILE1     "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/34.hdf5"     // HDF5 files for Layer Data
+#define SCALEFOLDER "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/bin/max_per_feature/"
 
 //possible last chars of weight data(used to differentiate between weights and biases)
 #define CHECKCHAR1  "W"                 // dense_1_[W]           for "W"
@@ -73,6 +74,8 @@ int main(int argc, char** argv){
 	//make G function with xyz file
      gf.make_G_XYZ(argv[1], paramfile.c_str(), ordfile.c_str());
 
+	//scale G by specified values
+	gf.scaleG(SCALEFOLDER);
      // normalize G by the maximum value of first 90% dimers
      //gf.norm_G_by_maxabs_in_first_percent(TRAIN_PERCENT);    
      // results saved in gf.G which is a map<string:atom_idx, double**>
@@ -109,7 +112,6 @@ int main(int argc, char** argv){
 		}
 		i++;
 	}
-	
 
 
 	//if user specified to output intermediate Gfn outputs to files, do so
@@ -141,7 +143,6 @@ int main(int argc, char** argv){
 		cout<<"Running Network"<<endl;
 	runtester<double>(INFILE1,CHECKCHAR2,X,numAtoms,N,inputDim);
 
-
 	/*free memory*/
 	for(int j=0;j<numAtoms;j++){
 		delete [] X[j];
@@ -149,7 +150,6 @@ int main(int argc, char** argv){
 	delete [] X;
 	delete [] inputDim;
 		
-				
-				
+					
 return 0;
 }

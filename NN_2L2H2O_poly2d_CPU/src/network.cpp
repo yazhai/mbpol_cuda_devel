@@ -621,9 +621,9 @@ void runtester(const char* filename, const char* checkchar, T** input, size_t nu
 		}
   
 		//energy conversion: 1 kcal/mol = .0433634 eV
-		for(int a = 0;a<outsize;a++){
-			finalOutput[a]*= ((6.0)/(.0433634));
-		}
+		// for(int a = 0;a<outsize;a++){
+		// 	finalOutput[a]*= ((6.0)/(.0433634));
+		// }
 		
           cout<<":::::::::::::::::::: FINAL OUTPUT::::::::::::::::: " <<endl;
 		if (outsize <= MAXSHOWRESULT){
@@ -665,7 +665,7 @@ void runtester(const char* filename, const char* checkchar, T** input, size_t nu
           file.close();
      }
 
-     // Free memory of allocated arraies.
+     // Free memory of allocated arrays.
      if(bias!=NULL)       delete[] bias;
      if(bias_dims!=NULL)  delete[] bias_dims;
      if(data!=NULL)       delete[] data;
