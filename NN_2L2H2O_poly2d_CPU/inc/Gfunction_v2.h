@@ -218,7 +218,7 @@ size_t NCluster, NType;                 // Number of dimer/trimer in the model /
 idx_t* TypeStart;      // The starting atom index of one type  
 idx_t* TypeNAtom;      // The count of the atoms in one type
 
-T** xyz;				//xyz data of atoms
+T** xyz;                    //xyz data of atoms
 
 Gparams_t<T> gparams;                 // G-fn paramter class
 
@@ -227,14 +227,14 @@ std::vector<T> G_param_max_size;        //max size of parameters for each atom t
 
 
 Gfunction_t(){
-	xyz = nullptr;
+     xyz = nullptr;
      TypeStart = nullptr;
      TypeNAtom = nullptr;
 };
 
 
 ~Gfunction_t(){
-	// clearMemo<T>(xyz);     // xyz is clean up in model member
+     // clearMemo<T>(xyz);     // xyz is clean up in model member
      for(auto it=G.begin() ; it!=G.end(); it++){
           clearMemo<T>(*it);
      };
@@ -267,7 +267,7 @@ void load_paramfile_default(){
 void load_seq(const char* _seqfile){
      if ( strlen(_seqfile) >0 ){
           //model2.read_seq_from_file(_seqfile);
-		model.read_seq_from_file(_seqfile);
+          model.read_seq_from_file(_seqfile);
      } else {
           model.load_default_atom_seq();
      };
@@ -304,8 +304,8 @@ void init_G(){
 //void make_G(const char* _distfile, int _titleline, const char* _colidxfile, const char* _paramfile, const char* _ordfile);
 
 void make_G_XYZ(const char* _xyzFile, const char * _paramfile, const char* _ordfile){
-	
-	load_xyz(_xyzFile);
+     
+     load_xyz(_xyzFile);
 
      load_paramfile(_paramfile);
 
@@ -314,9 +314,9 @@ void make_G_XYZ(const char* _xyzFile, const char * _paramfile, const char* _ordf
      make_G();
 }
 
-void make_G(){      
-     init_G(); 
-     model.sort_atom_by_type_id(); // sort atoms according to type
+void make_G(){    
+    model.sort_atom_by_type_id(); // sort atoms according to type
+    init_G(); 
 
      // init atom count and index in each type
      NType = model.TYPE_INDEX.size();
@@ -338,7 +338,7 @@ for(int loop = 0; loop < 1; loop++){
 
      timers.insert_random_timer(id3, 1 , "Gf_run_all");
      timers.timer_start(id3);     
-  	
+       
      // if(!model.XYZ_TRANS) model.transpose_xyz();
      xyz = model.XYZ ; // Give reference to xyz
      
@@ -550,7 +550,29 @@ for(size_t id_cluster = batchstart; id_cluster< batchlimit; id_cluster++)
 
 };
 
-    
+
+void scaleG(const char * scaleFolder){
+    size_t i = 0, dim;
+    T** scaleMatrix = nullptr;
+    std::string atomType, atomNum, fileName;
+    size_t single = 1;
+    for (auto it = G.begin(); it != G.end(); it++){
+        dim = G_param_max_size[model.TYPE_EACHATOM[i]];
+        init_mtx_in_mem<T>(scaleMatrix,dim,single);
+        atomType = std::to_string(model.TYPE_EACHATOM[i]);
+         atomNum = std::to_string(i);
+        fileName = scaleFolder + atomType + atomNum + "_max";
+        std::cout<<fileName<<std::endl;
+        read2DArrayfile<T>(scaleMatrix, dim, single, fileName.c_str());
+        for(int ii=0; ii<NCluster;ii++){
+               for(int jj=0;jj<dim;jj++){
+                    (*it)[ii][jj] /= scaleMatrix[jj][0];
+            }
+        }
+        i++;
+    }
+
+}
 
 };
 
