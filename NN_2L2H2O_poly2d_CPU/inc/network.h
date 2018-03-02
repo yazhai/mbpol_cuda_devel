@@ -146,7 +146,7 @@ public:
 			The above file can be compared with file "y_pred.txt" which contains outputs from python implementation
 */
 template <typename T>
-void runtester(const char* filename, const char* checkchar, T** input, size_t numAtoms, size_t sampleCount, size_t * sampleDim);
+void runtester(const char* filename, const char* checkchar, T** input, size_t numAtoms, size_t sampleCount, size_t * sampleDim, T * cutoffs);
 
 
 //Allowed Types
@@ -160,11 +160,11 @@ extern template class Layer_Net_t<double>;
 extern template class Layer_Net_t<float>;
 
 extern template void runtester<double>(const char* filename, const char* checkchar, double ** input, size_t numAtoms, 
-						size_t sampleCount, size_t * sampleDim);
+						size_t sampleCount, size_t * sampleDim, double * cutoffs);
 
 
 extern template void runtester<float>(const char* filename, const char* checkchar, float ** input, size_t numAtoms, 
-						size_t sampleCount, size_t * sampleDim);
+						size_t sampleCount, size_t * sampleDim, float * cutoffs);
 
 
 #endif

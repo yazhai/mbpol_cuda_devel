@@ -140,8 +140,10 @@ int main(int argc, char** argv){
           }
      }
 
+
+
           cout<<"Running Network"<<endl;
-     runtester<double>(INFILE1,CHECKCHAR2,X,numAtoms,N,inputDim);
+     runtester<double>(INFILE1,CHECKCHAR2,X,numAtoms,N,inputDim,gf.cutoffs);
 
      /*free memory*/
      for(int j=0;j<numAtoms;j++){

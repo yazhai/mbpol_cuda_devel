@@ -427,6 +427,7 @@ void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData
 
 
 
+
 /* TESTER FUNCTION 
 	Input:	filename -- weights and bias datafile -- defined in "fullTester.cpp"
 			checkchar - character used in processing datafile to differentiate between weights and biases -- defined in "fullTester.cpp"
@@ -442,7 +443,7 @@ void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData
 			The above file can be compared with file "y_pred.txt" which contains outputs from python implementation
 */
 template <typename T>
-void runtester(const char* filename, const char* checkchar, T** input, size_t numAtoms, size_t sampleCount, size_t * sampleDim){
+void runtester(const char* filename, const char* checkchar, T** input, size_t numAtoms, size_t sampleCount, size_t * sampleDim, T* cutoffs){
 
 	using namespace H5;
 	
@@ -620,9 +621,9 @@ void runtester(const char* filename, const char* checkchar, T** input, size_t nu
           	cout << endl;     
 		}
   
-		//energy conversion: 1 kcal/mol = .0433634 eV
+		//energy conversion: 1 kcal/mol = .0433634 eV & cutoffs
 		 for(int a = 0;a<outsize;a++){
-		 	finalOutput[a]*= ((6.0)/(.0433634));
+		 	finalOutput[a]*= ((6.0)/(.0433634))*cutoffs[a];
 		}
 		
           cout<<":::::::::::::::::::: FINAL OUTPUT::::::::::::::::: " <<endl;
@@ -689,11 +690,11 @@ template class Layer_Net_t<double>;
 template class Layer_Net_t<float>;
 
 template void runtester<double>(const char* filename, const char* checkchar, double ** input, size_t numAtoms, 
- 						size_t sampleCount, size_t * sampleDim);
+ 						size_t sampleCount, size_t * sampleDim, double * cutoffs);
 
 
 template void runtester<float>(const char* filename, const char* checkchar, float ** input, size_t numAtoms, 
- 						size_t sampleCount, size_t * sampleDim);
+ 						size_t sampleCount, size_t * sampleDim, float * cutoffs);
 
 
 

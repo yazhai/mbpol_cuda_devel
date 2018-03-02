@@ -205,6 +205,42 @@ void get_Gangular_add(T* rst, T* Rij, T* Rik, T* Rjk, size_t n, T eta, T zeta, T
 };
 
 
+//New Cutoff Functions
+
+//SIMPLE IMPLEMENTATION -- Can improve Later
+T base_fswitch(T ri,T rf,T r){
+     T value;
+     T coef = M_PI/(rf-ri);
+     T temp = (1.0 + cos(coef*(r-ri)))/2.0;
+	if(r<rf)
+		value = (r>=ri)? temp : 1;
+	else	
+		value = 0;
+
+     return value;
+}
+
+void fswitch_2b(T ri, T rf) {
+    T dist;
+    for(int i=0;i<NCluster;i++){
+        dist = get_dist(0,1,i);
+        cutoffs[i] = base_fswitch(ri,rf,dist);
+    }
+
+}
+
+void fswitch_3b(T ri, T rf) {
+    T dist1,dist2,dist3;
+    for(int i=0;i<NCluster;i++){
+        dist1 = get_dist(0,1,i);
+        dist2 = get_dist(0,2,i);
+        dist3 = get_dist(1,2,i);
+        cutoffs[i] = base_fswitch(ri,rf,dist1)*base_fswitch(ri,rf,dist2)*base_fswitch(ri,rf,dist3);
+    }
+}
+
+
+
 
 // Timers for benchmarking
 timers_t timers;
@@ -219,6 +255,7 @@ idx_t* TypeStart;      // The starting atom index of one type
 idx_t* TypeNAtom;      // The count of the atoms in one type
 
 T** xyz;                    //xyz data of atoms
+T* cutoffs;                 //switching function values (Nsamples long) -- for use after NN
 
 Gparams_t<T> gparams;                 // G-fn paramter class
 
@@ -226,8 +263,10 @@ std::vector<T**> G;   // G-fn matrix
 std::vector<T> G_param_max_size;        //max size of parameters for each atom type
 
 
+
 Gfunction_t(){
      xyz = nullptr;
+     cutoffs = nullptr;
      TypeStart = nullptr;
      TypeNAtom = nullptr;
 };
@@ -240,6 +279,7 @@ Gfunction_t(){
      };
      if(TypeStart != nullptr) delete[] TypeStart;
      if(TypeNAtom != nullptr) delete[] TypeNAtom;
+     if(cutoffs != nullptr) delete[] cutoffs;
 };
 
 
@@ -297,6 +337,22 @@ void init_G(){
      };
 };
 
+void load_cutoffs(){
+    T ri = 4.5, rf = 6.5;
+    if(cutoffs != nullptr)  delete [] cutoffs;
+    cutoffs = new T[NCluster];
+
+    if(TypeNAtom[0] == 2){      //if 2 body
+        fswitch_2b(4.5,6.5);
+    }
+    else{
+        fswitch_3b(0,4.5);      //else 3 body
+    }
+
+    return;
+}
+
+
 
 //=================================================================================
 // G-function Construction
@@ -312,6 +368,8 @@ void make_G_XYZ(const char* _xyzFile, const char * _paramfile, const char* _ordf
      load_seq(_ordfile);         
 
      make_G();
+
+     load_cutoffs();
 }
 
 void make_G(){    
