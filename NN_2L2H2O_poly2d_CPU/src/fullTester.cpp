@@ -75,7 +75,7 @@ int main(int argc, char** argv){
      gf.make_G_XYZ(argv[1], paramfile.c_str(), ordfile.c_str());
 
 	//scale G by specified values
-	gf.scaleG(SCALEFOLDER);
+	//gf.scaleG(SCALEFOLDER);
      // normalize G by the maximum value of first 90% dimers
      //gf.norm_G_by_maxabs_in_first_percent(TRAIN_PERCENT);    
      // results saved in gf.G which is a map<string:atom_idx, double**>
