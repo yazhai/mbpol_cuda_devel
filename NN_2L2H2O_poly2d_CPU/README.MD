@@ -1,28 +1,38 @@
 # Implementing CPU based Neural Network model 
 
 ## General
-These codes model the complete workflow of performing prediction based on Neural Network model in C++ and CBLAS libraries.  
+These codes model the complete workflow of performing prediction based on Neural Network model in C++ and CBLAS libraries.
 
-  - Currently the code is progressed at the stage that generating the G-function results used as a raw input for NN model.
-  - The Code reads out the parameters for different atom type correlations and the distances between each atom, and generates their G-functions, which is preserved as input for NN model prediction.
+  - The code currently takes as input the xyz coordinates of atoms, and generates as output their energies.
+  - The code first calculates distances from the xyz coordinates, then passes these distances through the g-function, and finally passes the g-function output through a 
+	Neural Network which is modeled to predict the energies of the atoms
+  - Currently the code does no training of the network and requires the weights/biases/structure of a pre-trained network as an input
 
 ## File list
+Source Files:
 - `utility.h/cpp`                  : File for utility functions
 - `timestamps.h/cpp`               : Timer class for benchmarking
 - `atomTypeID.h/cpp`               : Class manipulates atom name, type, internal id, etc.
 - `readGparams.h/cpp`              : Class reads out the atom type correlations parameters.
 - `Gfunction.h/cpp`                : Class constructs the G-function
+- `network.h/cpp`				: Multiple Classes that contain the implementation of the Neural Network
+- `readhdf5.hpp`				: Collection of functions to help read hdf5 files
+- `xyzData.h/cpp`				: Functions that perform the xyz to distance calculation
+- `fullTester.cpp`                 : The tester:  XYZ --> Gfn --> NN --> Energies
 
-- `tester.cpp`                     : The tester
-- `tester.in`                      : The tester input. It constains the distance information for 3 water dimers.
-- `H_rad/H_ang/O_rad/O_ang`        : Atom type correlation parameter files
+
+Resources:
+- `3b_to_fit.xyz`                  : Tester information. XYZ coordinates for water trimers.
+- `Gfunc_params_3Bv3.dat` 	    	: Atom type correlation parameter files
 - `Gfn_order.dat`                  : The order of atom correlation parameters when constructing G-function
-- `keras_gfn_double.csv`           : Reference tester output result with doulbe floating point precision from Python Keras/Theano 
-- `NN_input_2LHO_correctedD6_f64.dat` : Complete input file for all 42K water dimers. Used for benchmarking.
-- `run_bench.x`                    : Benchmarking script
+
+Output_Files:
+- `NN_final.out` 				: Final energies for each atom
+- `my_y_pred.txt` 				: final energies summed together -- the final output of the network to be comparedd with y_pred.txt
+- `gfn_o_H1a`					: Intermediate gfunction output for atom H1A... same exists for all other atoms if intermediate output enabled
    
 ### For class file `Gfunction.h/cpp` constructing G-function:
-These files contain following members:  
+These files contain following members:
    - It has a member `model` containing atom name, type, and id information for easily accessing atom information
    - It has a member `GP` containing the correlation parameters used for generating the G-function
    - It may employ the `openmp - pragma omp parallel for simd` to speed up the performance
@@ -30,28 +40,35 @@ These files contain following members:
 
 In addition, it is possible to utilize `CBLAS` library and/or `fopenmp` to speed up performance
    
+### For classes file `network.h/cpp` handling Neural Network 
+These files contain the following important parts:
+	- Layer Struct which has members: name, type, acttype, inputs/outputs(their dimensions), 
+	  weights, bias, and prev/next pointers
+	- network_t class which is responsible for movement through the network
+	- Layer_Net_t class which is made up of a collection of Layer Structs having important method
+	  predict which makes a prediction given input data and a finished network. 
+	-runtester method which is called by the main fullTester and which calls the predict method
 
 ### For the provided tester:  
-This tester shows the way to construct G-function.
-   - It may accept `tester.in` as input. This is the first 3 dimers from `NN_input_2LHO_correctedD6_f64.dat`, and is to check the result accuracy with from Python Keras/Theano.
-   - It may also accept `NN_input_2LHO_correctedD6_f64.dat`, which is the complete distance file for 42K water dimers. One may use this input for benchmarking.
+This tester first constructs the G-function using the resource files, and input, and then passes the output through the Neural Network to get the final energies
+   - It accepts input from the `3b_to_fit.xyz` file, but should be able to accept input from any similarly formatted file of water molecule coordinates
 
 ## To Compile:
 To compile the tester EXE:
-   - [optional] Check the installation path for `cblas` library. Change the included library path and invoked library name. 
-   - Run `[FLAGS1=1|FLAGS2=1|...] make` to create the executable file `gfunction_generate.x`
-      - FLAGS may be ONE from EACH following groups:
-        - Compiler type option, may be one of:
-          - CMP_GNU [default];
-          - CMP_INTEL;
-        - CBLAS library utilization, may be one of:
-          - USE_MKL;[Works with Intel2017];
-          - USE_GSL;
-          - (None, by default);
-        - OpenMP support, may be one of:
-          - USE_OPENMP;
-          - (None, by default);
-        - the OPTIMIZE OPTION (compatible with Intel compiler) may be one of the following:
+   - `rm -r build; mkdir build; cd build`
+   - `cmake [-DFLAGS1=1 -DFLAGS2=1] ..`
+	-FLAGS may be ONE from EACH of the following groups:
+		- Compiler type option, may be one of:
+            - CMP_GNU [default];
+            - CMP_INTEL;
+          - CBLAS library utilization, may be one of:
+            - USE_MKL;[Works with Intel2017];
+            - USE_GSL;
+            - (None, by default);
+          - OpenMP support, may be one of:
+            - USE_OPENMP;
+            - (None, by default);
+		- the OPTIMIZE OPTION (compatible with Intel compiler) may be one of the following:
             - ENABLE_XHOST
             - ENABLE_CAVX512  
             - ENABLE_CRAVX512  
@@ -60,22 +77,19 @@ To compile the tester EXE:
             - ENABLE_AVX  
             - NO_VECT
             - (None, by default)
-   - Example:
-      - `make` creates exe file based on GNU compiler, no clabs and openmp support
-      - `USE_GSL=1 USE_OPENMP=1 make` creates exe file with gsl_cblas and openmp support
-      - `CMP_INTEL=1 USE_MKL=1 USE_OPENMP=1 ENABLE_XHOST=1 make` creates exe file with best optimized performance on Intel and mkl_cblas/openmp support
-   - Run `make clean` to clean old object and executable files.
+	-Example:
+		-cmake -D_USE_GSL=1 -D_USEOPENMP=1 ..
+		-cmake -D_CMP_INTEL=1 -D_USE_MKL=1 -D_ENABLE_XHOST=1 ..
+
+   - `make` -- compiles executable to ../bin folder
+   - `make cleanAll` -- cleans up all outputfiles, object files, and executable
 
 ## To RUN
 To run with tester input:
-   - `./gfunction_generate.x tester.in --ordfile=Gfn_order.dat`
-   - Compare the final output scores with what are from Python Keras/Theano.  
+   - Change directories to ./bin
+   - `./Full_NN 3b_to_fit.xyz -paramfile=Gfunc_params_3Bv3.dat -ordfile=Gfn_order.dat -gfnOut=1`
+   - -gfnOut=1 outputs intermediate gfunction outputs to files, otherwise only final energies are outputted to files
+   - compare
    
-To run with benchmarking:
-   - In `run_benchmarking.x` file:
-      - Modify the compile optimization options `compile_options`. Each option will be run once.
-      - Modify tested omp threads `omp_thread_list`. Each OMP_NUM_THREADS will be run once under each optimization option.
-      - Modify iterations for each omp threads `itr_each_thread`. Program will be repeated with each OMP_NUM_THREADS
-   -  `./run_benchmarking.x` 
   
 
