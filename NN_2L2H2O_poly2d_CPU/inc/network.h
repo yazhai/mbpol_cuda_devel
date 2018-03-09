@@ -50,10 +50,10 @@ struct Layer_t{
      Layer_t(std::string _name, size_t _inputs, size_t outputs,T* _weights, T* _bias);
 
      //Activation Layer Constructor(using integer as type)
-     Layer_t(std::string _name, int _acttype);
+     Layer_t(std::string _name, int _acttype, size_t outputs);
 
      //Activation Layer Constructor(using enum ActType_t)
-     Layer_t(std::string _name, ActType_t _acttype);
+     Layer_t(std::string _name, ActType_t _acttype, size_t outputs);
 
      //Destructor
      ~Layer_t();
@@ -140,17 +140,17 @@ public:
           T * & _weights, T * & _bias);
 
      // Inserting an activiation layer by type (int)
-     void insert_layer(std::string &_name, int _acttype);
+     void insert_layer(std::string &_name, int _acttype, size_t _outputs);
 
      //Inserting an activation layer by type(enum)
-     void insert_layer(std::string &_name, ActType_t _acttype);
+     void insert_layer(std::string &_name, ActType_t _acttype, size_t _outputs);
 
 
      // Get layer ptr according to its index (start from 1 as 1st layer, 2 as second layer ...)
      Layer_t<T>* get_layer_by_seq(int _n);
 
      //Move through network and make prediction based on all layers.     
-     void predict(T* _inputData, int _N, int _input, T* & _outputData, unsigned long int& _outsize);
+     void predict(T* _inputData, int _N, int _input, T* & _outputData);
 };     
 
 
@@ -170,7 +170,8 @@ public:
                The above file can be compared with file "y_pred.txt" which contains outputs from python implementation
 */
 template <typename T>
-void runtester(const char* filename, const char* checkchar, T** input, size_t numAtoms, size_t sampleCount, size_t * sampleDim, T * cutoffs);
+void runtester(const char* filename, const char* checkchar, T** input, size_t N, T * cutoffs, const std::vector<idx_t> & typesList,
+                              const std::vector<size_t> & inputSizePerType);
 
 
 //Allowed Types
@@ -183,12 +184,14 @@ extern template class network_t<float>;
 extern template class Layer_Net_t<double>;
 extern template class Layer_Net_t<float>;
 
-extern template void runtester<double>(const char* filename, const char* checkchar, double ** input, size_t numAtoms, 
-                              size_t sampleCount, size_t * sampleDim, double * cutoffs);
+extern template void runtester<double>(const char* filename, const char* checkchar, double ** input,
+                              size_t N, double * cutoffs, const std::vector<idx_t> & typesList,
+                              const std::vector<size_t> & inputSizePerType);
 
 
-extern template void runtester<float>(const char* filename, const char* checkchar, float ** input, size_t numAtoms, 
-                              size_t sampleCount, size_t * sampleDim, float * cutoffs);
+extern template void runtester<float>(const char* filename, const char* checkchar, float ** input,
+                              size_t N, float * cutoffs, const std::vector<idx_t> & typesList,
+                              const std::vector<size_t> & inputSizePerType);
 
 
 #endif

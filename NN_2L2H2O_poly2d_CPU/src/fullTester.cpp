@@ -19,7 +19,7 @@
 #include "Gfunction_v2.h"
 #include "network.h"
 
-#define INFILE1     "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/34.hdf5"     // HDF5 files for Layer Data
+#define INFILE1     "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/22.hdf5"     // HDF5 files for Layer Data
 #define SCALEFOLDER "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/bin/max_per_feature/"
 
 //possible last chars of weight data(used to differentiate between weights and biases)
@@ -112,6 +112,16 @@ int main(int argc, char** argv){
           }
           i++;
      }
+                std::ofstream myOut;
+               std::string outFile = "switchMy.dat";
+    
+              myOut.open(outFile);
+
+    
+               for(int j=0;j<N;j++){
+                    myOut<<gf.cutoffs[j]<<std::endl;
+                }
+     
 
 
      //if user specified to output intermediate Gfn outputs to files, do so
@@ -140,10 +150,10 @@ int main(int argc, char** argv){
           }
      }
 
-
+    cout<<gf.cutoffs[1]<<endl;
 
           cout<<"Running Network"<<endl;
-     runtester<double>(INFILE1,CHECKCHAR2,X,numAtoms,N,inputDim,gf.cutoffs);
+     runtester<double>(INFILE1,CHECKCHAR2,X,N,gf.cutoffs,gf.model.TYPE_EACHATOM, gf.G_param_max_size);
 
      /*free memory*/
      for(int j=0;j<numAtoms;j++){

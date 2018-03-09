@@ -28,11 +28,15 @@
 #include <omp.h>
 #endif 
 
+
+//#define EUNIT (6.0)/(.0433634) //energy conversion factor 
+#define EUNIT 1
+
 using namespace std;
 
 //***********************************************************************************
 // Structure of Network:
-//          dimensions: N = number of samples, input = sample input Dimension, 
+//          dimensions: N = number of samples or clusters, input = sample input Dimension, 
 //               output = sample output dimension
 //          Layer Weights: Inputed as  input x output dimensional array
 //                         -stored as output x input dimensional array(transpose(weights))
@@ -88,8 +92,8 @@ Layer_t<T>::Layer_t( string _name, size_t _inputs, size_t _outputs,
 
 //Activation Layer Constructor(using integer as type)
 template<typename T>
-Layer_t<T>::Layer_t(string _name, int _acttype)
-                    : weights(NULL), bias(NULL),inputs(0), outputs(0), 
+Layer_t<T>::Layer_t(string _name, int _acttype, size_t outputs)
+                    : weights(NULL), bias(NULL),inputs(0), outputs(outputs), 
           type(Type_t::ACTIVIATION){
      
      if (_acttype < int(ActType_t::MAX_ACTTYPE_VALUE) ) {
@@ -100,8 +104,8 @@ Layer_t<T>::Layer_t(string _name, int _acttype)
 
 //Activation Layer Constructor(using enum ActType_t)
 template<typename T>
-Layer_t<T>::Layer_t(string _name, ActType_t _acttype)
-                    : weights(NULL),bias(NULL),inputs(0),outputs(0), 
+Layer_t<T>::Layer_t(string _name, ActType_t _acttype, size_t outputs)
+                    : weights(NULL),bias(NULL),inputs(0),outputs(outputs), 
                type(Type_t::ACTIVIATION){
      
           acttype = _acttype;
@@ -399,29 +403,29 @@ void Layer_Net_t<T>::insert_layer(string &_name, size_t _inputs, size_t _outputs
 
 // Inserting an activiation layer by type (int)
 template <typename T>
- void Layer_Net_t<T>::insert_layer(string &_name, int _acttype){
+ void Layer_Net_t<T>::insert_layer(string &_name, int _acttype, size_t _outputs){
           if (root!=NULL) {
                Layer_t<T>* curr = root;
                while(curr->next) {curr = curr->next;};
-               curr->next = new Layer_t<T>(_name, _acttype);
+               curr->next = new Layer_t<T>(_name, _acttype, _outputs);
                curr->next->prev = curr;
           }
      else{
-          root = new Layer_t<T>(_name,_acttype);
+          root = new Layer_t<T>(_name,_acttype,_outputs);
      }
 }
 
 //Inserting an activation layer by type(enum)
 template <typename T>
-void Layer_Net_t<T>::insert_layer(string &_name, ActType_t _acttype){
+void Layer_Net_t<T>::insert_layer(string &_name, ActType_t _acttype, size_t _outputs){
      if (root!=NULL) {
                Layer_t<T> * curr = root;
                while(curr->next) {curr = curr->next;};
-               curr->next = new Layer_t<T>(_name, _acttype);
+               curr->next = new Layer_t<T>(_name, _acttype, _outputs);
                curr->next->prev = curr;
           } 
      else {
-               root = new Layer_t<T>(_name, _acttype);
+               root = new Layer_t<T>(_name, _acttype, _outputs);
           }
      
 }
@@ -441,17 +445,14 @@ Layer_t<T>* Layer_Net_t<T>::get_layer_by_seq(int _n){
 
 //Move through network and make prediction based on all layers.     
 template <typename T>
-void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData, unsigned long int& _outsize){
+void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData){
           if (root != NULL) {
              
           size_t input = _input;
           size_t N = _N;
-          
-          //output size will change based on layer dim(init to 1 for simplicity)
-               size_t output = 1;
-
-               //two pointers used to store and recieve data(switch between them)
-               T** srcDataPtr = nullptr; 
+    
+          //two pointers used to store and recieve data(switch between them)
+          T** srcDataPtr = nullptr; 
           T** dstDataPtr = nullptr;
 
           //init srcDataPtr to point to tranpose of input data
@@ -472,7 +473,7 @@ void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData
                if ( curr-> type == Type_t::DENSE ) { 
                     
                          // If it is a dense layer, we perform fully_connected forward 
-                         neural_net.fullyConnectedForward((*curr), input,output,N, *srcDataPtr, dstDataPtr);
+                         neural_net.fullyConnectedForward((*curr), N, *srcDataPtr, dstDataPtr);
                     //note: inside fullyConnectedForward, output is updated, and input=output for next layer use.
 
                          switchptr(srcDataPtr, dstDataPtr);
@@ -481,7 +482,7 @@ void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData
                else if (curr -> type == Type_t::ACTIVIATION){
                          // If it is an activiation layer, perform corresponding activiation forwards
                          if (curr -> acttype == ActType_t::TANH){
-                              neural_net.activationForward_TANH(output,N, srcDataPtr, dstDataPtr);
+                              neural_net.activationForward_TANH((*curr),N, *srcDataPtr, dstDataPtr);
                               switchptr(srcDataPtr, dstDataPtr);
                          } 
                     else if (curr->acttype == ActType_t::LINEAR) {    
@@ -497,18 +498,15 @@ void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData
 
                } 
           while(  (curr=curr->next) != NULL);
-          
-          //final output size calculated
-               _outsize=output*N;
-     
+               
           //create space for output Data
                if(_outputData!=NULL){
                     delete[] _outputData;
                }
-               _outputData = new T[_outsize];
+               _outputData = new T[N];
      
                //copy from srcDataPtr to outputData          
-               copy(*srcDataPtr,*srcDataPtr + _outsize,_outputData);
+               copy(*srcDataPtr,*srcDataPtr + N,_outputData);
                          
                //Release Resources
           clearMemo<T>(srcDataPtr);
@@ -525,11 +523,11 @@ void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData
 
 
 /* TESTER FUNCTION 
-     Input:     filename -- weights and bias datafile -- defined in "fullTester.cpp"
+     Input:    filename -- weights and bias datafile -- defined in "fullTester.cpp"
                checkchar - character used in processing datafile to differentiate between weights and biases -- defined in "fullTester.cpp"
                input -- 2-d array of Gfn outputs (numAtoms x (N*sampleDim[i]))
                numAtoms -- number of atoms to be proccessed (first dimension of input array)
-               sampleCount -- N, the number of samples for each atom (second dimension of input array)
+               N  --  the number of samples for each atom (second dimension of input array)
                sampleDim -- a 1 x numAtoms sized array containing information for the number of inputs per sample
      Result:
                Printing of first/last 10 scores for each atom
@@ -539,8 +537,10 @@ void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData
                The above file can be compared with file "y_pred.txt" which contains outputs from python implementation
 */
 template <typename T>
-void runtester(const char* filename, const char* checkchar, T** input, size_t numAtoms, size_t sampleCount, size_t * sampleDim, T* cutoffs){
+void runtester(const char* filename, const char* checkchar, T** input, size_t N,T* cutoffs, 
+           const std::vector<idx_t> & typesList, const std::vector<size_t> & inputSizePerType){
 
+     size_t numAtoms = typesList.size();
      using namespace H5;
      
      ofstream outputFile;
@@ -560,7 +560,7 @@ void runtester(const char* filename, const char* checkchar, T** input, size_t nu
      Layer_Net_t<T> * currentNet = nullptr;
      
      // reserver for results
-     unsigned long int outsize = 0; 
+     //unsigned long int outsize = 0; 
      T* output = nullptr;
      T* finalOutput = nullptr;    
      
@@ -623,7 +623,7 @@ void runtester(const char* filename, const char* checkchar, T** input, size_t nu
                               string actName = "Activation_" + to_string(layerID/2);
                               
                               cout << " Initialize layer : " << actName << endl;
-                              (*currentNet).insert_layer(actName, ActType_t::TANH);
+                              (*currentNet).insert_layer(actName, ActType_t::TANH,data_dims[1]);
                               cout << " Layer " << actName << "  is initialized. " <<endl <<endl;                                    
                     
                               //reset values for next loop
@@ -653,33 +653,33 @@ void runtester(const char* filename, const char* checkchar, T** input, size_t nu
           for(int ii=0;ii<numAtoms;ii++){
 
                //check if this input is hydrogen or oxygen based on the sampleDim ( input count)
-               if(sampleDim[ii] == 84){
+               if(typesList[ii] == 1){
                     //this is a hydrogen atom
                     currentNet = & layers_2;
-                    cout<<"USING HYDROGEN NET Input Dimension: "<< sampleDim[ii] << " N: " <<sampleCount<<endl;
+                    cout<<"USING HYDROGEN NET Input Dimension: "<< inputSizePerType[1] << " N: " <<N<<endl;
                }
                else{
                     //this is an oxygen atom
                     currentNet = & layers_1;
-                    cout<<"USING OXYGEN NET Input Dimension: " << sampleDim[ii] << " N: " <<sampleCount<<endl;
+                    cout<<"USING OXYGEN NET Input Dimension: " << inputSizePerType[0] << " N: " <<N<<endl;
                }
                
 
                cout<<"Prediction " << ii << endl;
-               (*currentNet).predict(input[ii], sampleCount, sampleDim[ii], output, outsize);
+               (*currentNet).predict(input[ii], N, inputSizePerType[typesList[ii]], output);
    
                //if the finalOutput array does not exist, create and init to 0.
                if(finalOutput == nullptr){
                     cout<<endl<<"finalOutput Init"<<endl;
-                    finalOutput = new T[outsize];
-                    for(int i = 0;i < outsize; i++)
+                    finalOutput = new T[N];
+                    for(int i = 0;i < N; i++)
                          finalOutput[i] = 0;
                }
 
                //scores for each atom to file, sum scores to finalOutput array
                outputFile.open(filePath,ofstream::out|ofstream::app);
                outputFile<<endl<<"NEXT ATOM:"<<endl;
-               for(int a = 0;a<outsize;a++){
+               for(int a = 0;a<N;a++){
                     //sum energies of all atoms for final result. 
                     finalOutput[a] += output[a];
                     outputFile<<setprecision(18)<<scientific<<output[a]<<" ";
@@ -698,9 +698,9 @@ void runtester(const char* filename, const char* checkchar, T** input, size_t nu
                std::cout.setf( std::ios::fixed, std::ios::floatfield );     
                // then, select how many results will be shown.
                // if too many output, only show some in the beginning and some in the end
-               if (outsize <= MAXSHOWRESULT){
+               if (N <= MAXSHOWRESULT){
                     cout << endl << " Final score are :" <<endl;            
-                     for(int ii=0; ii<outsize; ii++){
+                     for(int ii=0; ii<N; ii++){
                          cout << (output[ii]) << "  " ;
                     }         
                } 
@@ -710,7 +710,7 @@ void runtester(const char* filename, const char* checkchar, T** input, size_t nu
                          cout << (output[ii]) << "  " ;
                     }
                     cout << endl << " Final score ( last " << MAXSHOWRESULT/2 << " records ):" <<endl;
-                    for(int ii=(outsize-MAXSHOWRESULT/2); ii<outsize; ii++){
+                    for(int ii=(N-MAXSHOWRESULT/2); ii<N; ii++){
                          cout << (output[ii]) << "  " ;
                     }                         
                }
@@ -718,14 +718,14 @@ void runtester(const char* filename, const char* checkchar, T** input, size_t nu
           }
   
           //energy conversion: 1 kcal/mol = .0433634 eV & cutoffs
-           for(int a = 0;a<outsize;a++){
-                finalOutput[a]*= ((6.0)/(.0433634))*cutoffs[a];
+           for(int a = 0;a<N;a++){
+                finalOutput[a]*= (EUNIT)*cutoffs[a];
           }
           
           cout<<":::::::::::::::::::: FINAL OUTPUT::::::::::::::::: " <<endl;
-          if (outsize <= MAXSHOWRESULT){
+          if (N <= MAXSHOWRESULT){
                cout << endl << " Final Final score are :" <<endl;            
-                for(int ii=0; ii<outsize; ii++){
+                for(int ii=0; ii<N; ii++){
                         cout << (finalOutput[ii]) << "  " ;
                }         
           } 
@@ -735,7 +735,7 @@ void runtester(const char* filename, const char* checkchar, T** input, size_t nu
                     cout << (finalOutput[ii]) << "  " ;
                }
                cout << endl << " Final score ( last " << MAXSHOWRESULT/2 << " records ):" <<endl;
-               for(int ii=(outsize-MAXSHOWRESULT/2); ii<outsize; ii++){
+               for(int ii=(N-MAXSHOWRESULT/2); ii<N; ii++){
                         cout << (finalOutput[ii]) << "  " ;
                }                         
           }
@@ -743,7 +743,7 @@ void runtester(const char* filename, const char* checkchar, T** input, size_t nu
           
           outputFile.open("my_y_pred.txt");
           outputFile<<" Final Output -- Summation"<<endl;
-          for(int a = 0;a<outsize;a++){
+          for(int a = 0;a<N;a++){
                outputFile<<setprecision(18)<<scientific<<finalOutput[a]<<" ";
                outputFile<<endl;
           }     
@@ -785,12 +785,14 @@ template class network_t<float>;
 template class Layer_Net_t<double>;
 template class Layer_Net_t<float>;
 
-template void runtester<double>(const char* filename, const char* checkchar, double ** input, size_t numAtoms, 
-                               size_t sampleCount, size_t * sampleDim, double * cutoffs);
+template void runtester<double>(const char* filename, const char* checkchar, double ** input, 
+                               size_t N, double * cutoffs, const std::vector<idx_t> & typesList, 
+                               const std::vector<size_t> & inputSizePerType);
 
 
-template void runtester<float>(const char* filename, const char* checkchar, float ** input, size_t numAtoms, 
-                               size_t sampleCount, size_t * sampleDim, float * cutoffs);
+template void runtester<float>(const char* filename, const char* checkchar, float ** input,
+                               size_t N, float * cutoffs, const std::vector<idx_t> & typesList,
+                               const std::vector<size_t> & inputSizePerType);
 
 
 
