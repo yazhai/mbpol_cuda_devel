@@ -19,7 +19,9 @@
 #include "Gfunction_v2.h"
 #include "network.h"
 
-#define INFILE1     "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/22.hdf5"     // HDF5 files for Layer Data
+#define INFILE_3B   "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/22.hdf5" 
+#define INFILE_2B   "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/34.hdf5"
+#define INFILE1     INFILE_3B    // HDF5 files for Layer Data
 #define SCALEFOLDER "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/bin/max_per_feature/"
 
 //possible last chars of weight data(used to differentiate between weights and biases)
@@ -28,6 +30,9 @@
 
 //percentage of gfn output data used in training(and not in testing)
 #define TRAIN_PERCENT 0
+
+#define EUNIT (6.0)/(.0433634) //energy conversion factor 
+//#define EUNIT 1
 
 //define openMP
 #ifdef _OPENMP
@@ -135,7 +140,6 @@ int main(int argc, char** argv){
                string atomNum = std::to_string(i);
                gfuncOutPath = gfuncOutPrefix+atomType+"_"+atomNum;
                cout<<gfuncOutPath<<endl;
-          
                gfuncOut.open(gfuncOutPath.c_str(), ofstream::out | ofstream::trunc );
 
                cout<<"inputDim " << atomType<<atomNum<<"  " << inputDim[i]  << " N: "<< N<<endl;
@@ -150,12 +154,42 @@ int main(int argc, char** argv){
           }
      }
 
-    cout<<gf.cutoffs[1]<<endl;
+    //G FUNCTION IS DONE, NOW CREATE NETWORK AND PREDICT!
 
-          cout<<"Running Network"<<endl;
-     runtester<double>(INFILE1,CHECKCHAR2,X,N,gf.cutoffs,gf.model.TYPE_EACHATOM, gf.G_param_max_size);
+    cout<<"Creating Network"<<endl;
+    size_t numTypes = gf.model.TYPE_INDEX.size();
+    allNets_t<double> * networkCollection = new allNets_t<double>(numTypes, INFILE1,CHECKCHAR2);       //TODO: change 2 to variable
+
+    //initialize space to put outputs of NN
+    double * output = nullptr;
+    double * finalOutput = new double[N];
+    for(int i = 0; i< N; i++){
+        finalOutput[i] = 0;
+    }
+
+    //Predict
+    cout << "Running Network" <<endl;
+    for(int ii = 0; ii< numAtoms; ii++){
+        networkCollection->nets[gf.model.TYPE_EACHATOM[ii]].predict(X[ii],N,gf.G_param_max_size[gf.model.TYPE_EACHATOM[ii]],output);
+        for(int a = 0; a<N; a++){
+            finalOutput[a] += output[a];
+        }
+    }
+
+    //scale and save prediction (apply cutoff)
+    ofstream outputFile;
+    outputFile.open("BPNN_Energy.dat");
+    for(int a = 0;a<N;a++){
+        finalOutput[a]*= (EUNIT)*gf.cutoffs[a];
+        outputFile<<setprecision(18)<<scientific<<finalOutput[a]<<" ";
+        outputFile<<endl;
+    }
+    outputFile.close();
 
      /*free memory*/
+    if(output!=NULL) delete[] output;  
+    if(finalOutput!=NULL) delete[] finalOutput;    
+
      for(int j=0;j<numAtoms;j++){
           delete [] X[j];
      }
