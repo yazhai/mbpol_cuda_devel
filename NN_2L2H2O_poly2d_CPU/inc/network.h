@@ -50,15 +50,16 @@ struct Layer_t{
      Layer_t(std::string _name, size_t _inputs, size_t outputs,T* _weights, T* _bias);
 
      //Activation Layer Constructor(using integer as type)
-     Layer_t(std::string _name, int _acttype);
+     Layer_t(std::string _name, int _acttype, size_t outputs);
 
      //Activation Layer Constructor(using enum ActType_t)
-     Layer_t(std::string _name, ActType_t _acttype);
+     Layer_t(std::string _name, ActType_t _acttype, size_t outputs);
 
      //Destructor
      ~Layer_t();
 
 };
+
 
 
 //Class defining movement through the Network
@@ -140,55 +141,49 @@ public:
           T * & _weights, T * & _bias);
 
      // Inserting an activiation layer by type (int)
-     void insert_layer(std::string &_name, int _acttype);
+     void insert_layer(std::string &_name, int _acttype, size_t _outputs);
 
      //Inserting an activation layer by type(enum)
-     void insert_layer(std::string &_name, ActType_t _acttype);
+     void insert_layer(std::string &_name, ActType_t _acttype, size_t _outputs);
 
 
      // Get layer ptr according to its index (start from 1 as 1st layer, 2 as second layer ...)
      Layer_t<T>* get_layer_by_seq(int _n);
 
      //Move through network and make prediction based on all layers.     
-     void predict(T* _inputData, int _N, int _input, T* & _outputData, unsigned long int& _outsize);
+     void predict(T* _inputData, int _N, int _input, T* & _outputData);
 };     
 
+//Structure to hold all the different networks needed after they are built
+template<typename T>
+struct allNets_t{
+     Layer_Net_t<T> * nets;
+     size_t  numNetworks;
 
+     //Default constructor
+     allNets_t();
 
-/* TESTER FUNCTION 
-     Input:     filename -- weights and bias datafile -- defined in "fullTester.cpp"
-               checkchar - character used in processing datafile to differentiate between weights and biases -- defined in "fullTester.cpp"
-               input -- 2-d array of Gfn outputs (numAtoms x (N*sampleDim[i]))
-               numAtoms -- number of atoms to be proccessed (first dimension of input array)
-               sampleCount -- N, the number of samples for each atom (second dimension of input array)
-               sampleDim -- a 1 x numAtoms sized array containing information for the number of inputs per sample
-     Result:
-               Printing of first/last 10 scores for each atom
-               Printing of first/last 10 scores for the final output(summation of all atoms)
-               Store all scores of each atom in file -- "NN_final.out"
-               Store final output score(summation of all atoms scores) in file -- "my_y_pred.txt"
-               The above file can be compared with file "y_pred.txt" which contains outputs from python implementation
-*/
-template <typename T>
-void runtester(const char* filename, const char* checkchar, T** input, size_t numAtoms, size_t sampleCount, size_t * sampleDim, T * cutoffs);
+     //Construct from HDF5 file
+     allNets_t(size_t _numNetworks, const char* filename, const char* checkchar);
+
+     //Destructor
+     ~allNets_t();
+};
+
 
 
 //Allowed Types
 extern template struct Layer_t<double>;
 extern template struct Layer_t<float>;
 
+extern template struct allNets_t<double>;
+extern template struct allNets_t<float>;
+
 extern template class network_t<double>;
 extern template class network_t<float>;
 
 extern template class Layer_Net_t<double>;
 extern template class Layer_Net_t<float>;
-
-extern template void runtester<double>(const char* filename, const char* checkchar, double ** input, size_t numAtoms, 
-                              size_t sampleCount, size_t * sampleDim, double * cutoffs);
-
-
-extern template void runtester<float>(const char* filename, const char* checkchar, float ** input, size_t numAtoms, 
-                              size_t sampleCount, size_t * sampleDim, float * cutoffs);
 
 
 #endif

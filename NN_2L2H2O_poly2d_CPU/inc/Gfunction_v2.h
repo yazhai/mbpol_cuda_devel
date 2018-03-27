@@ -230,12 +230,12 @@ void fswitch_2b(T ri, T rf) {
 }
 
 void fswitch_3b(T ri, T rf) {
-    T dist1,dist2,dist3;
+    T s01,s02,s12;
     for(int i=0;i<NCluster;i++){
-        dist1 = get_dist(0,1,i);
-        dist2 = get_dist(0,2,i);
-        dist3 = get_dist(1,2,i);
-        cutoffs[i] = base_fswitch(ri,rf,dist1)*base_fswitch(ri,rf,dist2)*base_fswitch(ri,rf,dist3);
+        s01 = base_fswitch(ri,rf,get_dist(0,1,i));
+        s02 = base_fswitch(ri,rf,get_dist(0,2,i));
+        s12 = base_fswitch(ri,rf,get_dist(1,2,i));
+        cutoffs[i] = s01*s02 + s01*s12 + s02*s12;
     }
 }
 
@@ -260,7 +260,7 @@ T* cutoffs;                 //switching function values (Nsamples long) -- for u
 Gparams_t<T> gparams;                 // G-fn paramter class
 
 std::vector<T**> G;   // G-fn matrix
-std::vector<T> G_param_max_size;        //max size of parameters for each atom type
+std::vector<size_t> G_param_max_size;        //max size of parameters for each atom type
 
 
 
