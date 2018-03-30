@@ -114,6 +114,7 @@ public:
      bool XYZ_TRANS;            // control how XYZ is stored in memory:
                                 // false: XYZ is stored as read_in []
                                 // true: XYZ is transposed
+     bool ifsorted;             // if the XYZ has been sorted.
      std::vector<std::vector<T> > EXTRA ;     // extra information in the xyz input file
 
      // sequence of atom relation
@@ -125,6 +126,8 @@ public:
         XYZ =nullptr;
         NATOM=0;
         NCLUSTER=0;
+        ifsorted = false;
+        XYZ_TRANS= false;
      };;
      ~atom_Type_ID_t(){
         clearMemo(XYZ);   
@@ -175,6 +178,8 @@ public:
 
      void sort_atom_by_type_id(){         
          
+          if (ifsorted) return ;
+
          bool if_do_a_trans = false;
          if(!XYZ_TRANS) {
              transpose_xyz();
@@ -210,6 +215,8 @@ public:
              transpose_xyz();
          };
 
+         ifsorted = true;
+
      };
 
 
@@ -235,7 +242,7 @@ public:
             std::memcpy(XYZ[0], &(xyz_all[0]), sizeof(T)*NATOM*NCLUSTER*3);
 
             XYZ_TRANS = false ;
-
+            ifsorted = false;
             ATOMS = ATOMS_READIN;
             TYPE_EACHATOM = TYPE_EACHATOM_READIN;
          }  catch (const std::exception& e){
