@@ -20,10 +20,9 @@
 #include <map>
 #include <string>
 
-#include<cuda.h>
-#include<cublas_v2.h>
+#include <cuda.h>
+#include <cublas_v2.h>
 
-#include "atomTypeID.h"
 #include "utility.h"
 
 #ifdef _OPENMP
@@ -603,6 +602,69 @@ void norm_rows_by_maxabs_in_each_row_d(T*& src_mtx, size_t pitch, size_t src_row
      
 }
 
+
+template <typename T>
+class matrix_2D_d{
+private:
+     void init0(){
+          nrow = 0;
+          ncol = 0;
+          pitch = 0;
+          dat = nullptr;
+     };
+
+public:        
+     T* dat;
+	size_t nrow, ncol, pitch; 
+     
+     
+     void init(size_t _nrow, size_t _ncol) {
+          nrow = _nrow;
+          ncol = _ncol;
+         	           
+     }
+
+     matrix_2D_d(): nrow(0), ncol(0), pitch(0) {
+          init0();          
+     };
+     matrix_2D_d(size_t _nrow, size_t _ncol, T ** data){
+          init0();
+          init(_nrow, _ncol);   
+		memcpy_mtx_h2d(dat,pitch,data,nrow,ncol);
+		
+     };
+     ~matrix_2D_d(){
+          clearMemo_d(dat);           
+     };
+
+     T* get_elem_ptr(size_t irow, size_t icol){          
+          return dat + irow * pitch / sizeof(T) + icol  ;      
+     };
+     
+     void make_transpose(){
+          if ( dat != nullptr){          
+               T* tmp_d = nullptr;
+               size_t param_new[3] ;                           
+               init_mtx_in_mem_d( tmp_d, param_new[0], ncol, nrow) ;                               
+               
+               transpose_mtx_g(tmp_d, param_new[0], dat, pitch, nrow, ncol);               
+               clearMemo_d(dat);
+               dat = tmp_d;     
+
+               // switch row/col dim
+               param_new[1] = ncol;
+               param_new[2] = nrow;
+               nrow = param_new[1];
+               ncol = param_new[2];
+			pitch = param_new[0];
+
+          };
+     };
+
+	void print(){
+		printDeviceMatrix(dat,pitch,nrow,ncol);
+	}
+};
 
 
 //==============================================================================

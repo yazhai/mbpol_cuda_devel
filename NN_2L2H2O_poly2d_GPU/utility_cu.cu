@@ -16,7 +16,6 @@
 
 #define INST_GLOBAL_VAR
 #include "utility_cu.cuh"
-#include "atomTypeID.h"
 
 #ifdef _OPENMP
 #include <omp.h>
