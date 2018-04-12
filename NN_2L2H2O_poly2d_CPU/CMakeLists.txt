@@ -25,7 +25,7 @@ else(${_CMP_INTEL})
 endif(${_CMP_INTEL})
 
 #resource folder
-set(RES_DIR ${CMAKE_SOURCE_DIR}/res/BPNN-3b)
+set(RES_DIR ${CMAKE_SOURCE_DIR}/res/BPNN-2b)
 
 #resource files
 file(GLOB RES "${RES_DIR}/*")

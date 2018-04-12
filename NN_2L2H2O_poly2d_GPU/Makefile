@@ -33,7 +33,7 @@ LIBRARIES += -L$(CUDA_PATH)/lib64
 #
 # Target rules
 EXE = gfn
-OBJ = atomTypeID.o Gfunction_cu.o readGparams.o timestamps.o utility.o utility_cu.o
+OBJ = Gfunction_v2.o timestamps.o utility.o utility_cu.o
 
 
 all: clean build
@@ -44,11 +44,12 @@ build: $(EXE)
 $(EXE): $(OBJ)
 	$(NVCC) -o $@ $? $(CCFLAGS) $(NVCCFLAGS)  $(LDFLAGS) 
 
-%.o: %.cu 
+%.o: %.cu
 	$(NVCC) $(INCLUDES) $(LIBRARIES) $(NVCCFLAGS) $(CCFLAGS) $(LDFLAGS) -o $@ -c $<
 	
 %.o: %.cpp 
-	$(HOST_COMPILER) $(CCFLAGS) -o $@ -c $<
+#	$(HOST_COMPILER) $(CCFLAGS) -o $@ -c $<
+	$(NVCC) $(INCLUDES) $(LIBRARIES) $(NVCCFLAGS) $(CCFLAGS) $(LDFLAGS) -o $@ -c $<
 				
 clean:
 	rm -rf *.o

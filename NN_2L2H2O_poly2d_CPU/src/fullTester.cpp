@@ -21,7 +21,7 @@
 
 #define INFILE_3B   "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/22.hdf5" 
 #define INFILE_2B   "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/34.hdf5"
-#define INFILE1     INFILE_3B    // HDF5 files for Layer Data
+#define INFILE1     INFILE_2B    // HDF5 files for Layer Data
 #define SCALEFOLDER "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_CPU/bin/max_per_feature/"
 
 //possible last chars of weight data(used to differentiate between weights and biases)
