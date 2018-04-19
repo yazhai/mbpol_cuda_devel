@@ -154,7 +154,7 @@ public:
     };
 
      // insert an atom
-     idx_t insert_atom(std::string _type){
+     void insert_atom(std::string _type){
         // get atom and type index. 
         // if not found, create new label
         idx_t type_idx = get_type_idx(_type, true);

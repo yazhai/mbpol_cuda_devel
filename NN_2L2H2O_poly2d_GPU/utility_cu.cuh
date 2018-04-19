@@ -280,6 +280,20 @@ void printDeviceVector(T* vec_d, size_t size)
     delete [] vec;
 }
 
+template<typename T>
+void printNumber(T* num_d){
+    T * num;
+    cudaDeviceSynchronize();
+    cudaMemcpy(num,num_d,sizeof(T), cudaMemcpyDeviceToHost);
+    if(TypeIsDouble<T>::value) {
+        std::cout.precision(std::numeric_limits<double>::digits10+1);
+  } else {
+        std::cout.precision(std::numeric_limits<float>::digits10+1);;
+  }
+  std::cout.setf( std::ios::fixed, std::ios::floatfield );
+  std::cout << *num<< " "<<std::endl;
+  delete num;
+}
 
 // Helper function showing the data matrix on Device
 // Showing the first rowsXcols number of elements.
@@ -304,6 +318,25 @@ void printDeviceMatrix(T* mtx_d, size_t pitch, size_t rows, size_t cols)
           std::cout << std::endl;
     }
     std::cout << std::endl;
+    delete [] vec;
+}
+
+template <typename T>
+void printToFileDeviceMatrix(T * mtx_d, size_t pitch, size_t rows, size_t cols, const char * file){
+    T *vec;
+    vec = new T[rows*cols];
+    size_t T_s = sizeof(T);    
+    cudaDeviceSynchronize();
+    cudaMemcpy2D((void*)vec, T_s*cols, (const void*)mtx_d, pitch, T_s*cols, rows, cudaMemcpyDeviceToHost);
+   
+    std::ofstream outfile;
+    outfile.open(file);
+    for(int j=0;j<rows;j++){
+        for(int k=0;k<cols;k++){
+            outfile<<std::setprecision(18)<<std::scientific<<vec[j*cols + k]<<" ";
+        }
+        outfile<<std::endl;
+    } 
     delete [] vec;
 }
 
@@ -640,6 +673,7 @@ public:
      T* get_elem_ptr(size_t irow, size_t icol){          
           return dat + irow * pitch / sizeof(T) + icol  ;      
      };
+
      
      void make_transpose(){
           if ( dat != nullptr){          
@@ -664,6 +698,10 @@ public:
 	void print(){
 		printDeviceMatrix(dat,pitch,nrow,ncol);
 	}
+
+    void printFile(const char * file){
+        printToFileDeviceMatrix(dat,pitch,nrow,ncol,file);
+    }
 };
 
 

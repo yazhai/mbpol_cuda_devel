@@ -40,9 +40,8 @@ public:
 	};
      ~Gparams_t(){
 		for(auto it = PARAMS.begin(); it != PARAMS.end(); it++){
-
 			if(it->second.dat_d != nullptr)
-				delete it->second.dat_d;
+				clearMemo_d(it->second.dat_d);
 		}
 	}; 
    
@@ -98,7 +97,6 @@ public:
                }
 
 			for(auto it = PARAMS.begin(); it!= PARAMS.end(); it++){
-				std::cout<<"trying... " << it -> second.dat_h[0]<<" "<< it->second.nparam<< " ";
 				memcpy_vec_h2d(it->second.dat_d, &(it->second.dat_h[0]), it->second.nparam * it->second.ncol);
 				
 			}

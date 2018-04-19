@@ -25,8 +25,6 @@ const char* FLAG_PARAM_FILE        =    "paramfile" ;
 const char* FLAG_ATOM_ORDER_FILE   =      "ordfile" ;
 const char* FLAG_GFN_OUTPUT_ENABLE =          "gfnOut";     //enable intermediate gfn output to file
 
-const int THREDHOLD_COL = -1;
-const double THREDHOLD_MAX_VALUE = 60.0;
 
 using namespace std;
 int main(int argc, char** argv){
@@ -46,10 +44,14 @@ int main(int argc, char** argv){
      // parameter file
      string paramfile;
      getCmdLineArgumentString(argc, (const char **)argv, FLAG_PARAM_FILE, paramfile);
+     std::cout<<"Param File: "<<paramfile<<std::endl;
      
      // atom order file
      string ordfile;
      getCmdLineArgumentString(argc, (const char **)argv, FLAG_ATOM_ORDER_FILE, ordfile);    
+     std::cout<<"Order File: "<<ordfile<<std::endl;
+
+     std::cout<<"XYZ File: "<<argv[1]<<std::endl;
 
      //Gfn output enable
      int gfnOut = getCmdLineArgumentInt(argc, (const char **)argv, FLAG_GFN_OUTPUT_ENABLE);     

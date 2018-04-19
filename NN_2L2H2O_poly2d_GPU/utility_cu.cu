@@ -49,8 +49,8 @@ cudaInfo::cudaInfo(){
      fconst[1] = 1.0;
      dconst[0] = 0.0;
      dconst[1] = 1.0;     
-     checkCudaErrors( cudaMemcpyToSymbol( (const void*)FCONST, (const void*) fconst, 2* sizeof(float), 0, cudaMemcpyHostToDevice ) );
-     checkCudaErrors( cudaMemcpyToSymbol( (const void*)DCONST, (const void*) dconst, 2*sizeof(double), 0, cudaMemcpyHostToDevice ) );
+     // checkCudaErrors( cudaMemcpyToSymbol( (const void*)FCONST, (const void*) fconst, 2* sizeof(float), 0, cudaMemcpyHostToDevice ) );
+     // checkCudaErrors( cudaMemcpyToSymbol( (const void*)DCONST, (const void*) dconst, 2*sizeof(double), 0, cudaMemcpyHostToDevice ) );
 };
 
 cudaInfo::~cudaInfo(){};

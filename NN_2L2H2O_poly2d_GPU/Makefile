@@ -18,7 +18,7 @@ HOST_COMPILER  ?= g++
 NVCC           := $(CUDA_PATH)/bin/nvcc -ccbin $(HOST_COMPILER)
 
 # flags
-CCFLAGS   := -std=c++11 -O3
+CCFLAGS   := -std=c++11 -O3 -g
 NVCCFLAGS := -Wno-deprecated-gpu-targets  
 LDFLAGS   := -lcublas
 
