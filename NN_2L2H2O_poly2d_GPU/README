@@ -1,0 +1,16 @@
+Current Implementation of the GPU Gfunction, which matches the CPU implementation
+This is a preliminary version in which only the xyz data and gfunction are shared.
+Basic Algorithm for G function:
+	Loop Through Each Atom
+		Loop Through Each Sequence (e.g. 00, 0H) in order specified
+			For each Sequence, launch the correct Kernel (either angular or radial)
+			
+
+In the kernel:
+	Each thread deals with a seperate cluster	
+	Load the relevant xyz coordinates into shared memory.
+	Calculate the results and store in shared memory
+	Put results back into global memory
+
+Results:
+	
