@@ -33,7 +33,7 @@ LIBRARIES += -L$(CUDA_PATH)/lib64
 #
 # Target rules
 EXE = gfn
-OBJ = Gfunction_v2.o timestamps.o utility.o utility_cu.o
+OBJ = driver.o Gfunction_v2.o timestamps.o utility.o utility_cu.o
 
 
 all: clean build

@@ -26,11 +26,10 @@ const int COL_ANG_ZETA = 4;
 const int COL_ANG_LAMBD=3;
 const int COL_ANG_TOTAL=6;
 
-//#define TILE_DIM 24 // 3 (x,y,z triplet) * 8
-//#define BLOCK_ROWS = 8
-#define TPB 64
-#define BPG 8
-#define MAXPARAM 50
+#define TPB 64           //threads per block
+#define BPG 8            //blocks per grid
+#define MAXPARAM 50      //maximum number of parameters for an atom sequence (or arbitrary large number for shared memory instantiation)
+#define DEBUG 1       //boolean value for intermediate output 
 
 
 
@@ -48,6 +47,8 @@ __device__ T get_cos_d(T Rij_d, T Rik_d, T Rjk_d) {
 };
 
 
+//get distance in gradial calculation, 2 atoms xyz stored in d
+//d is formatted x1,x2,y1,y2,z1,z2 in memmory
 template<typename T>
 __device__ T get_dist2(const T * d){
      T a = d[0] - d[1];
@@ -56,6 +57,8 @@ __device__ T get_dist2(const T * d){
      return sqrt(a*a + b*b + c*c);
 }
 
+//get distance in angular calculation, 3 atoms xyz stored in d
+//d is formatted x1,x2,x3,y1,y2,y3,z1,z2,z3 in memmory
 template<typename T>
 __device__ T get_dist3(const T * d, size_t i1, size_t i2){
      T a = d[i1] - d[i2];
@@ -80,6 +83,21 @@ __device__ T get_Gangular_d(T Rij_d, T Rik_d, T Rjk_d, T eta, T zeta, T lambd){
      return G_ang ;    
 };
 
+//Function get_Gradial:  get the Radial results for a specific sequence in all clusters 
+/*   Inputs:   g:        device pointer to g function where output is stored
+ *             pitch:    pitch of matrix, g, on device
+ *             xyz0:     pointer to xyz of atom 0. Stored as xxxyyyzzz
+ *             xyz1:     pointer to xyz of atom 1. Stored as xxxyyyzzz
+ *             p:        pointer to the relevant matrix of parameters for this sequence
+ *             np:       number of parameters
+ *             nc:       number of columns in parameter matrix
+ *             N:        number of clusters
+ *             offset:   current offset of where to store results in g at the end of calculation
+ *   Alg:      load xyz data into shared memory, calculate distance, store results into shared memory,
+ *                  push results from shared memory onto global memory.             
+ *   Result:   A specific section of g, starting at offset, for each cluster is filled
+ *                       with the correct radial results.
+ */     
 template<typename T>
 __global__ void get_Gradial(T * g, size_t pitch, T * xyz0, T * xyz1, T * p, size_t np, size_t nc, size_t N, size_t offset){	
 	
@@ -134,12 +152,17 @@ __global__ void get_Gradial(T * g, size_t pitch, T * xyz0, T * xyz1, T * p, size
      }
 }
 
+//Function get_Gradial2:  get the Radial results for a specific sequence in all clusters, and store in 2 output matrices 
+//This function operates in exactly the same way as get_Gradial, but stores results in 2 g matrices instead of one.
+//The purpose of this function is to create a special case and avoid computing the same results twice
 template<typename T>
 __global__ void get_Gradial2(T * g0, T * g1, size_t pitch,  T * xyz0, T * xyz1, T * p, size_t np, size_t nc, size_t N, size_t offset){	
 	
      __shared__ T xyzShare [TPB*6];
+     __shared__ T results [TPB*MAXPARAM];
      int tid = threadIdx.x + blockDim.x * blockIdx.x;
      int stride = blockDim.x * gridDim.x;
+
 
      while(tid < N){
     
@@ -157,18 +180,28 @@ __global__ void get_Gradial2(T * g0, T * g1, size_t pitch,  T * xyz0, T * xyz1, 
 
           for (int ip = 0; ip < np; ip ++){
 
+			results[threadIdx.x*np + ip] = get_Gradial_d(distance, p[ip*nc + COL_RAD_RS], p[ip*nc + COL_RAD_ETA]);
                //id_cluster = tid
                //offset_by_rel must be passed   
-               g0[tid*pitch/sizeof(T) + offset + ip] += get_Gradial_d(distance, p[ip*nc + COL_RAD_RS], p[ip*nc + COL_RAD_ETA]);
-               g1[tid*pitch/sizeof(T) + offset + ip] += g0[tid*pitch/sizeof(T) + offset + ip];
           }
+		__syncthreads();
+		
+		for(int ip =0; ip<np; ip++){
+			g0[tid*pitch/sizeof(T) + offset + ip] += results[threadIdx.x*np + ip];
+          	g1[tid*pitch/sizeof(T) + offset + ip] += results[threadIdx.x*np + ip];
+		}
+
           tid += stride;
      }
 }
 
+//Function get_Gangular:  get the Angular results for a specific sequence in all clusters 
+//This function operates in the same way as the radial function, but calls the angular device function instead.
 template<typename T>
 __global__ void get_Gangular(T * g0, size_t pitch, T * xyz0, T * xyz1, T * xyz2, T * p, size_t np, size_t nc, size_t N, size_t offset){	
-     __shared__ T xyzShare [TPB*9];
+     
+	__shared__ T xyzShare [TPB*9];
+	__shared__ T results [TPB*MAXPARAM];
      int tid = threadIdx.x + blockDim.x * blockIdx.x;
      int stride = blockDim.x * gridDim.x;
 
@@ -194,9 +227,15 @@ __global__ void get_Gangular(T * g0, size_t pitch, T * xyz0, T * xyz1, T * xyz2,
 
           for (int ip = 0; ip < np; ip ++){
 
-               g0[tid*pitch/sizeof(T) + offset + ip] += get_Gangular_d(distance1, distance2, distance3, p[ip*nc + COL_ANG_ETA], 
+               results[threadIdx.x*np + ip] = get_Gangular_d(distance1, distance2, distance3, p[ip*nc + COL_ANG_ETA], 
                                                         p[ip*nc + COL_ANG_ZETA], p[ip*nc + COL_ANG_LAMBD]) ;
           } 
+
+		__syncthreads();
+
+		for (int ip = 0; ip < np; ip++){
+			g0[tid*pitch/sizeof(T) + offset + ip] += results[threadIdx.x*np + ip];
+		}
 
           tid += stride;
      }
@@ -440,54 +479,56 @@ void make_G(){
      timers.get_all_timers_info();
      timers.get_time_collections();
 
+     if(DEBUG){
+          //output comparison
 
-     //output comparison
+          //get correct output
+          T ** correctOutput = nullptr;
+          std::string correctFileName = "g_O0.dat";
+          read2DArrayfile(correctOutput, G_d[0]->nrow, G_d[0]->ncol, correctFileName.c_str());
 
-     //get correct output
-     T ** correctOutput = nullptr;
-     std::string correctFileName = "g_O0.dat";
-     read2DArrayfile(correctOutput, G_d[0]->nrow, G_d[0]->ncol, correctFileName.c_str());
+          //get g function output from device to host
+          memcpy_mtx_d2h(G[0], G_d[0]->dat, G_d[0]->pitch,  G_d[0]->nrow, G_d[0]->ncol);
 
-     //get g function output from device to host
-     memcpy_mtx_d2h(G[0], G_d[0]->dat, G_d[0]->pitch,  G_d[0]->nrow, G_d[0]->ncol);
-
-     for(int i = 0; i< G_d[0]->nrow; i++){
-          for(int j = 0; j< G_d[0]->ncol; j++){
-               correctOutput[i][j] = abs(correctOutput[i][j] - G[0][i][j]);
+          for(int i = 0; i< G_d[0]->nrow; i++){
+               for(int j = 0; j< G_d[0]->ncol; j++){
+                    correctOutput[i][j] = abs(correctOutput[i][j] - G[0][i][j]);
+               }
           }
+
+          std::string filename = "O_out.dat";
+          G_d[0]->printFile(filename.c_str());
+          std::cout<<std::endl;
+
+          std::ofstream outfile;
+          std::string filename2 = "diff.dat";
+          outfile.open(filename2);
+          for(int j=0;j<G_d[0]->nrow;j++){
+               for(int k=0;k<G_d[0]->ncol;k++){
+                    outfile<<std::setprecision(18)<<std::scientific<<correctOutput[j][k]<<" ";
+               }
+               outfile<<std::endl;
+          } 
+
+          outfile.close();
+
+          std::string filename3 = "O_out_CPU.dat";
+          outfile.open(filename3);
+          for(int j=0;j<G_d[0]->nrow;j++){
+               for(int k=0;k<G_d[0]->ncol;k++){
+                    outfile<<std::setprecision(18)<<std::scientific<<G[0][j][k]<<" ";
+               }
+               outfile<<std::endl;
+          }          
+
+          outfile.close();
+
+          delete [] correctOutput;
      }
 
-std::string filename = "O_out.dat";
-G_d[0]->printFile(filename.c_str());
-std::cout<<std::endl;
-
-std::ofstream outfile;
-std::string filename2 = "diff.dat";
-outfile.open(filename2);
-for(int j=0;j<G_d[0]->nrow;j++){
-     for(int k=0;k<G_d[0]->ncol;k++){
-          outfile<<std::setprecision(18)<<std::scientific<<correctOutput[j][k]<<" ";
-     }
-     outfile<<std::endl;
-} 
-
-outfile.close();
-
-std::string filename3 = "O_out_CPU.dat";
-outfile.open(filename3);
-for(int j=0;j<G_d[0]->nrow;j++){
-     for(int k=0;k<G_d[0]->ncol;k++){
-          outfile<<std::setprecision(18)<<std::scientific<<G[0][j][k]<<" ";
-     }
-     outfile<<std::endl;
-} 
-
-outfile.close();
-
-delete [] correctOutput;
-
-std::cout<<"End of Gfn"<<std::endl;
-
+     std::cout<<"End of Gfn"<<std::endl;
 }
+
+
 };
 #endif
