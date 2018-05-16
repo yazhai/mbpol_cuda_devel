@@ -24,10 +24,13 @@
 #include <cublas_v2.h>
 
 #include "utility.h"
+#include "whichtype.hpp"
 
 #ifdef _OPENMP
 #include <omp.h>
 #endif 
+
+#define TILEDIM 32  //for matrix transpose
 
 //==============================================================================
 //
@@ -117,35 +120,6 @@ extern cublasHandle_t global_cublasHandle;  // global handle
 
 void cublas_start();
 void cublas_end();
-
-
-
-//==============================================================================
-//
-// Check if a type is single precision floating point or double precision floating point
-template <typename T>
-struct TypeIsFloat
-{
-     static const bool value = false;
-};
-
-template <>
-struct TypeIsFloat<float>
-{    
-     static const bool value = true;
-};
-
-template <typename T>
-struct TypeIsDouble
-{
-     static const bool value = false;
-};
-
-template <>
-struct TypeIsDouble<double>
-{    
-     static const bool value = true;
-};
 
 
 
@@ -354,7 +328,6 @@ void memcpy_vec_h2d(T* & data_d, T* data_h, size_t size)
      {
           init_vec_in_mem_d<T>(data_d, size);
      }        
-    
     int size_b = size*sizeof(T);
     checkCudaErrors( cudaMemcpy((void*)data_d, (const void*)data_h,
                                 size_b,
@@ -414,8 +387,28 @@ void memcpy_mtx_d2h(T** & data_h, T* data_d, size_t pitch_d,  size_t rows, size_
 
 //========================================================================================
 // 2D array transpose
-//
 // Some nasty way of transpose matrix on device . Perhaps need optimization here!!!
+
+//unfinished bad transpose
+template <typename T>
+__global__ void transpose_bad(T* dat_dst, size_t pitch_dst, T* dat_rsc, size_t pitch_rsc, size_t nrow, size_t ncol){
+     //nrow is length of rows in source, ncol is length of col in source
+     size_t T_s = sizeof(T);
+     int colS_in = pitch_rsc/T_s;
+     int colS_out = pitch_dst/T_s;
+     int tid_r = threadIdx.x + blockDim.x * blockIdx.x;
+     int tid_c = threadIdx.y + blockDim.y * blockIdx.y;
+     int stride_r = blockDim.x * gridDim.x;
+     int stride_c = blockDim.y * gridDim.y;
+     while(tid_r < nrow){
+          while(tid_c < ncol){
+               dat_dst[tid_c*colS_out + tid_r] = dat_rsc[tid_r*colS_in + tid_c];
+               tid_c += stride_c;
+          }
+          tid_r += stride_r;
+     }
+}
+
 template <typename T>
 __global__ void trans_d(T* dat_dst, size_t pitch_dst, T* dat_rsc, size_t pitch_rsc)
 {
@@ -475,7 +468,7 @@ int read2DArray_d(T* & data, size_t & pitch, size_t & rows, size_t & cols, const
                cols=mtx[0].size();
                size_t T_s = sizeof(T);
                
-               init_mtx_in_mem_d<T>(data, pitch, rows, cols);  
+                    init_mtx_in_mem_d<T>(data, pitch, rows, cols);  
                          
                //#ifdef _OPENMP
                //#pragma omp parallel for simd shared(data, mtx, rows)
@@ -666,6 +659,14 @@ public:
 		memcpy_mtx_h2d(dat,pitch,data,nrow,ncol);
 		
      };
+
+     //no data constructor
+     matrix_2D_d(size_t _nrow, size_t _ncol){
+          init0();
+          init(_nrow,_ncol);
+          init_mtx_in_mem_d<T>(dat, pitch, nrow, ncol);
+     }
+
      ~matrix_2D_d(){
           clearMemo_d(dat);           
      };
@@ -678,12 +679,13 @@ public:
      void make_transpose(){
           if ( dat != nullptr){          
                T* tmp_d = nullptr;
-               size_t param_new[3] ;                           
-               init_mtx_in_mem_d( tmp_d, param_new[0], ncol, nrow) ;                               
-               
-               transpose_mtx_g(tmp_d, param_new[0], dat, pitch, nrow, ncol);               
+               size_t param_new[3] ;                         
+               init_mtx_in_mem_d(tmp_d,param_new[0],ncol,nrow);
+
+               transpose_bad<<<dim3(32,32),dim3(32,32)>>>(tmp_d, param_new[0],dat, pitch, nrow, ncol);
+                                         
                clearMemo_d(dat);
-               dat = tmp_d;     
+               dat = tmp_d;
 
                // switch row/col dim
                param_new[1] = ncol;

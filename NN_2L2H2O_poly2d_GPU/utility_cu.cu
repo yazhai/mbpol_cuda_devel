@@ -106,11 +106,15 @@ void transpose_mtx_d<float>(float* & dat_dst, size_t & pitch_dst, float* dat_rsc
      //float a = 1, b=0;     
      if( dat_dst == NULL) init_mtx_in_mem_d( dat_dst, pitch_dst, ncol_rsc, nrow_rsc ) ;
      int T_s = sizeof(float);
+
+     float one = 1;
+     float zero = 0;
+
      checkCublasErrors(  cublasSgeam ( global_cublasHandle,     CUBLAS_OP_T,   CUBLAS_OP_T,
                                         nrow_rsc, ncol_rsc,
-                                        (const float*) &FCONST[1],
+                                        (const float*) &one,
                                         (const float*) dat_rsc,  (int) (pitch_rsc/T_s),
-                                        (const float*) &FCONST[0],
+                                        (const float*) &zero,
                                         (const float*) dat_rsc,  (int) (pitch_rsc/T_s),
                                                        dat_dst,  (int) (pitch_dst/T_s)) );                                                       
 };
@@ -120,13 +124,23 @@ void transpose_mtx_d<double>(double* & dat_dst, size_t & pitch_dst, double* dat_
      //double a = 1, b=0;     
      if( dat_dst == NULL) init_mtx_in_mem_d( dat_dst, pitch_dst, ncol_rsc, nrow_rsc ) ;
      int T_s = sizeof(double);
-     checkCublasErrors(  cublasDgeam ( global_cublasHandle,     CUBLAS_OP_T,   CUBLAS_OP_T,
-                                        nrow_rsc, ncol_rsc,
-                                        (const double*) &DCONST[1],
-                                        (const double*) dat_rsc,  (int) (pitch_rsc/T_s),
-                                        (const double*) &DCONST[0],
-                                        (const double*) dat_rsc,  (int) (pitch_rsc/T_s),
-                                                       dat_dst,  (int) (pitch_dst/T_s) ) );                                        
+
+     double one = 1;
+     double zero = 0;
+
+     checkCublasErrors(  cublasDgeam ( global_cublasHandle,     CUBLAS_OP_T,   CUBLAS_OP_N,
+                                        nrow_rsc, (int)(pitch_rsc/T_s),
+                                        (const double*) &one,
+                                                       dat_rsc,  
+                                        //(int) (pitch_rsc/T_s),
+                                        (int)(pitch_rsc/T_s),    
+                                        (const double*) &zero,
+                                         dat_rsc,  
+                                         //(int) (pitch_dst/T_s),
+                                         nrow_rsc,
+                                                       dat_dst,  
+                                                       //(int) (pitch_dst/T_s) 
+                                         nrow_rsc            ) );                                            
 };
 
 
