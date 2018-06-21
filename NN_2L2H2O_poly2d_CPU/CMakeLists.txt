@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.6)
-project (Full_NN)
+project (bpnn_main.x)
 
 #select libraries to employ
 option(_USE_GSL "use gsl_cblas library" 0)
@@ -25,10 +25,11 @@ else(${_CMP_INTEL})
 endif(${_CMP_INTEL})
 
 #resource folder
-set(RES_DIR ${CMAKE_SOURCE_DIR}/res/BPNN-2b)
+set(RES_DIR_2B ${CMAKE_SOURCE_DIR}/res/BPNN-2b)
+set(RES_DIR_3B ${CMAKE_SOURCE_DIR}/res/BPNN-3b)
 
 #resource files
-file(GLOB RES "${RES_DIR}/*")
+file(GLOB RES "${RES_DIR_2B}/*" "${RES_DIR_3B}/*")
 
 #source code folder
 set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
@@ -36,17 +37,17 @@ set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
 #set all source files
 file(GLOB SRC "${SRC_DIR}/*")
 
-
 file(COPY  ${RES} DESTINATION ${CMAKE_BINARY_DIR})
 
-add_executable(Full_NN ${SRC})
+add_executable(bpnn_main.x ${SRC})
 
 include_directories(${CMAKE_SOURCE_DIR}/inc)
 
-#install(TARGETS Full_NN DESTINATION bin)
+
+#install(TARGETS bpnn_main.x DESTINATION bin)
 
 #compiler options
-target_compile_options(Full_NN PUBLIC -g -std=c++11 -O0)
+target_compile_options(bpnn_main.x PUBLIC -g -std=c++11 -O0)
 
 #set libraries
 set(LIBS hdf5 hdf5_cpp)
@@ -63,14 +64,14 @@ endif(${_USE_OPENMP})
 
 	
 #libaries
-target_link_libraries(Full_NN ${LIBS})
+target_link_libraries(bpnn_main.x ${LIBS})
 
 #clean outputs
 ADD_CUSTOM_TARGET(cleanAll @echo cleaning all)
 SET(CLEANEDAll		${CMAKE_BINARY_DIR}/gfn_o*
 				${CMAKE_BINARY_DIR}/my_y_pred.txt
 				${CMAKE_BINARY_DIR}/NN_final.out
-				${CMAKE_BINARY_DIR}/Full_NN
+				${CMAKE_BINARY_DIR}/bpnn_main.x
 				)
 
 ADD_CUSTOM_COMMAND(

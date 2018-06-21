@@ -8,6 +8,8 @@
 #include <string>
 
 
+namespace MBbpnnPlugin{
+
 // Time stamp class. Recording the start/end/passed time, the label, used by which thread of a timer
 struct timestamp {
      std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
@@ -81,6 +83,9 @@ public:
      bool add_time(timerid_t _id);     
           
 };
+
+
+}; // end of namespace MBbpnnPlugin
 
 #endif
 

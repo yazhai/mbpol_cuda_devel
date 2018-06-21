@@ -40,7 +40,6 @@ using namespace std;
 
 
 
-
 template<>
 double return_a_number<double>(string _string){
      return  stod ( _string );     

@@ -10,6 +10,11 @@
 #define WEIGHTNAMES "weight_names"      // Attribute name saving the list of weight names in HDF5
 
 
+
+namespace MBbpnnPlugin{
+
+
+
 //Type of Layer
 enum class Type_t {
      UNINITIALIZED  = 0 ,
@@ -64,7 +69,7 @@ struct Layer_t{
 
 //Class defining movement through the Network
 template<typename T>
-class network_t{
+class Functional_t{
 
 public:
 
@@ -99,17 +104,17 @@ public:
 #if defined (_USE_GSL) || defined (_USE_MKL)
 
 template <>
-void network_t<double>::fullyConnectedForward(const Layer_t<double> & layer,const size_t & N,double* & srcData, double** & dstData);
+void Functional_t<double>::fullyConnectedForward(const Layer_t<double> & layer,const size_t & N,double* & srcData, double** & dstData);
 
 template<>
-void network_t<float>::fullyConnectedForward(const Layer_t<float> & layer, const size_t & N,float* & srcData, float** & dstData);
+void Functional_t<float>::fullyConnectedForward(const Layer_t<float> & layer, const size_t & N,float* & srcData, float** & dstData);
 
 
 template <>
-void network_t<double>::fullyConnectedBackward(const Layer_t<double> & layer, const size_t & N,double* & srcData, double** & dstData);
+void Functional_t<double>::fullyConnectedBackward(const Layer_t<double> & layer, const size_t & N,double* & srcData, double** & dstData);
 
 template<>
-void network_t<float>::fullyConnectedBackward(const Layer_t<float> & layer, const size_t & N,float* & srcData, float** & dstData);
+void Functional_t<float>::fullyConnectedBackward(const Layer_t<float> & layer, const size_t & N,float* & srcData, float** & dstData);
 
 
 #endif
@@ -117,11 +122,11 @@ void network_t<float>::fullyConnectedBackward(const Layer_t<float> & layer, cons
 
 //class for Network of Layers(Collection of Layer Structs that can implement movement of input through network)
 template<typename T>
-class Layer_Net_t{
+class NN_t{
 private: 
 
      //controls propogation through network
-     network_t<T> neural_net;
+     Functional_t<T> neural_net;
      
      //helper function: switch two pointers to pointers
      void switchptr(T** & alpha, T** & bravo);
@@ -131,10 +136,10 @@ public:
      //first layer(where input goes first). 
      Layer_t<T> * root = nullptr;
      
-     Layer_Net_t(){};
+     NN_t(){};
      
      //Delete all layers, from end to root.
-     ~Layer_Net_t();
+     ~NN_t();
      
      //inserting a dense layer
      void insert_layer(std::string &_name, size_t _inputs, size_t _outputs, 
@@ -151,23 +156,33 @@ public:
      Layer_t<T>* get_layer_by_seq(int _n);
 
      //Move through network and make prediction based on all layers.     
-     void predict(T* _inputData, int _N, int _input, T* & _outputData);
+     void predict(T* _inputData, size_t _input, size_t _N, T* & _outputData);
+
+
+     //Move backwards through the network and return the gradient
+     void backward(T* _inputData, size_t _input, size_t _N, T* & _outputData);
+
 };     
 
 //Structure to hold all the different networks needed after they are built
 template<typename T>
-struct allNets_t{
-     Layer_Net_t<T> * nets;
+struct allNN_t{
+     NN_t<T> * nets;
      size_t  numNetworks;
 
      //Default constructor
-     allNets_t();
+     allNN_t();
 
      //Construct from HDF5 file
-     allNets_t(size_t _numNetworks, const char* filename, const char* checkchar);
+     allNN_t(size_t _numNetworks, const char* filename, const char* checkchar);
+
+     // initailize all NNs
+     void init_allNNs(size_t _numNetworks, const char* filename, const char* checkchar);
+
+
 
      //Destructor
-     ~allNets_t();
+     ~allNN_t();
 };
 
 
@@ -176,14 +191,20 @@ struct allNets_t{
 extern template struct Layer_t<double>;
 extern template struct Layer_t<float>;
 
-extern template struct allNets_t<double>;
-extern template struct allNets_t<float>;
+extern template class Functional_t<double>;
+extern template class Functional_t<float>;
 
-extern template class network_t<double>;
-extern template class network_t<float>;
+extern template class NN_t<double>;
+extern template class NN_t<float>;
 
-extern template class Layer_Net_t<double>;
-extern template class Layer_Net_t<float>;
+extern template struct allNN_t<double>;
+extern template struct allNN_t<float>;
 
+
+
+
+
+
+}; // end of namespace MBbpnnPlugin
 
 #endif

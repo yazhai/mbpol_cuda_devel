@@ -38,6 +38,9 @@
 #endif 
 
 
+
+
+
 //==============================================================================
 // A 2D-array type based on vector
 template<typename T>
@@ -46,6 +49,8 @@ using matrix_by_vector_t = std::vector< std::vector<T> >;
 // data type to save atom index
 using idx_t = uint32_t ;
 
+
+//namespace MBbpnnPlugin{
 
 //==============================================================================
 //
@@ -130,7 +135,7 @@ bool init_mtx_in_mem(T** & data, size_t rows, size_t cols){
                #ifdef _OPENMP
                #pragma omp parallel for shared(data, p, rows, cols)
                #endif 
-               for(int ii=0; ii<rows; ii++){                    
+               for(size_t ii=0; ii<rows; ii++){                    
                     data[ii]=p+ii*cols;     
                     memset(data[ii], 0, sizeof(T)*cols);       
                }          
@@ -276,8 +281,8 @@ void transpose_mtx(T** & datdst,  T** datrsc,  size_t nrow_rsc, size_t ncol_rsc)
           #ifdef _OPENMP
           #pragma omp parallel for simd shared(datrsc, datdst, nrow_rsc, ncol_rsc)
           #endif      
-          for(int irow = 0; irow< nrow_rsc; irow++){          
-               for(int icol=0; icol < ncol_rsc; icol++){
+          for(size_t irow = 0; irow< nrow_rsc; irow++){          
+               for(size_t icol=0; icol < ncol_rsc; icol++){
                     datdst[icol][irow] = datrsc[irow][icol];      // not a smart way.
                }
           }          
@@ -389,5 +394,7 @@ int getCmdLineArgumentInt(const int argc, const char **argv, const char *string_
 bool getCmdLineArgumentString(const int argc, const char **argv,
                                      const char *string_ref, std::string & string_retval);
                                                                         
+
+//} // end of namespace MBbpnnPlugin
 
 #endif

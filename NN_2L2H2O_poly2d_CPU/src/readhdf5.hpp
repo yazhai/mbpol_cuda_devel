@@ -15,7 +15,7 @@
 
 using namespace std;
 using namespace H5;
-
+using namespace MBbpnnPlugin;
 
 
 
@@ -46,45 +46,45 @@ void Read_Layer_Data_By_DatName (H5File file, const char* name, T* & data_out, h
          try{
               switch(type_class){
                     case H5T_INTEGER :{
-                         cout << name << " : " <<endl;
-                         cout <<  "     - type is : H5T_INT " <<endl;
+                         cerr << name << " : " <<endl;
+                         cerr <<  "     - type is : H5T_INT " <<endl;
                          IntType intype = dset.getIntType();
                          
                          // Get order of datatype and print message if it's a little endian.
                          H5std_string order_string;
                          H5T_order_t order = intype.getOrder( order_string );
-                         cout <<  "     - encoded as : " << order_string << endl;
+                         cerr <<  "     - encoded as : " << order_string << endl;
                          
                          // Get size of the data element stored in file and print it.
                          size_t size = intype.getSize();
-                         cout <<  "     - size of each data is : " << size << endl;
+                         cerr <<  "     - size of each data is : " << size << endl;
                          
                          }break;
                          
                     case H5T_FLOAT :{
-                         cout << name << " : " <<endl;
-                         cout <<  "     - type is : H5T_FLOAT " <<endl;
+                         cerr << name << " : " <<endl;
+                         cerr <<  "     - type is : H5T_FLOAT " <<endl;
                          FloatType fttype = dset.getFloatType();
 
                          
                          // Get order of datatype and print message if it's a little endian.
                          H5std_string order_string;
                          H5T_order_t order = fttype.getOrder( order_string );
-                         cout <<  "     - encoded as : " << order_string << endl;     
+                         cerr <<  "     - encoded as : " << order_string << endl;     
                          
                          // Get size of the data element stored in file and print it.
                          size_t size = fttype.getSize();
-                         cout <<  "     - size of each data is : " << size << endl;                       
+                         cerr <<  "     - size of each data is : " << size << endl;                       
                                            
                          }break;
   
                     default   :{
-                         cout << " Don't know data type!!! " <<endl;
+                         cerr << " Don't know data type!!! " <<endl;
                          }break;
               }
 
          } catch (...){
-               cout << " Don't know data type!!! " <<endl;
+               cerr << " Don't know data type!!! " <<endl;
                // not implemented.
          }
 
@@ -99,7 +99,7 @@ void Read_Layer_Data_By_DatName (H5File file, const char* name, T* & data_out, h
           
           
          for (int ii=0; ii<rank; ii++) {
-               cout << "     - dim " << ii << " is of size "<< dims[ii] << endl;  
+               cerr << "     - dim " << ii << " is of size "<< dims[ii] << endl;  
          }
          
 
@@ -122,8 +122,8 @@ void Read_Layer_Data_By_DatName (H5File file, const char* name, T* & data_out, h
           } else if (TypeIsDouble<T>::value){
                dset.read( data_out, PredType::NATIVE_DOUBLE, memspace, dspace);
           } else {
-               cout << "ERROR : Support only single and double float at present!" << endl;
-               cout << " Read data as single precision float " <<endl;
+               cerr << "ERROR : Support only single and double float at present!" << endl;
+               cerr << " Read data as single precision float " <<endl;
                dset.read( data_out, PredType::NATIVE_FLOAT, memspace, dspace);
           }
           
@@ -163,13 +163,13 @@ inline vector<string> Read_Attr_Data_By_Seq (H5File file, const char* path, cons
           // test the attribute type class
           H5T_class_t type_class = attr->getTypeClass();
           if (!type_class == H5T_STRING){
-               cout << " Saved attribute is not string !!! Only string_read is implemented !!!" <<endl;
+               cerr << " Saved attribute is not string !!! Only string_read is implemented !!!" <<endl;
                file.close();
                throw runtime_error("error reading attr - attribute is not string!");
           }          
           // test if it is variable string
           if(type->isVariableStr()) {
-               cout << "Attribute is variable string. Not implemented!" << endl;;
+               cerr << "Attribute is variable string. Not implemented!" << endl;;
                file.close();
                throw runtime_error("error reading attr - attribute string is variable!");
           }
@@ -201,7 +201,7 @@ inline vector<string> Read_Attr_Data_By_Seq (H5File file, const char* path, cons
                //Buff to output vector
                char* test = attr_buff;
                for (int ii=0; ii< attr_count; ii++, test+=(attr_size+1)){
-                  //cout << test <<endl;
+                  //cerr << test <<endl;
                   attr_names.push_back(test);
                } 
           }

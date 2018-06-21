@@ -33,6 +33,7 @@
 //#define EUNIT 1
 
 using namespace std;
+using namespace MBbpnnPlugin;
 
 //***********************************************************************************
 // Structure of Network:
@@ -53,7 +54,7 @@ using namespace std;
 //          rowMajor memory storage.
 //
 //          Weights Matrix is transposed when layer is initialized, while Input data
-//               is transposed in the predict method of Layer_Net_t (before forward 
+//               is transposed in the predict method of NN_t (before forward 
 //               propagation through the network begins). Transposing Bias is trivial.
 //***********************************************************************************
 
@@ -93,7 +94,7 @@ Layer_t<T>::Layer_t( string _name, size_t _inputs, size_t _outputs,
 //Activation Layer Constructor(using integer as type)
 template<typename T>
 Layer_t<T>::Layer_t(string _name, int _acttype, size_t outputs)
-                    : weights(NULL), bias(NULL),inputs(0), outputs(outputs), 
+                    : weights(NULL), bias(NULL),inputs(outputs), outputs(outputs), 
           type(Type_t::ACTIVIATION){
      
      if (_acttype < int(ActType_t::MAX_ACTTYPE_VALUE) ) {
@@ -105,7 +106,7 @@ Layer_t<T>::Layer_t(string _name, int _acttype, size_t outputs)
 //Activation Layer Constructor(using enum ActType_t)
 template<typename T>
 Layer_t<T>::Layer_t(string _name, ActType_t _acttype, size_t outputs)
-                    : weights(NULL),bias(NULL),inputs(0),outputs(outputs), 
+                    : weights(NULL),bias(NULL),inputs(outputs),outputs(outputs), 
                type(Type_t::ACTIVIATION){
      
           acttype = _acttype;
@@ -123,12 +124,12 @@ Layer_t<T>::~Layer_t(){
 
 
 
-/* network_t class method definitions */
+/* Functional_t class method definitions */
 
 //non-cblas implementation of fully Connected Forward Propogation.
 //Weights matrix and srcData are already transposed for optimal computation
 template<typename T>
-void network_t<T>::fullyConnectedForward(const Layer_t<T> & layer,
+void Functional_t<T>::fullyConnectedForward(const Layer_t<T> & layer,
                               const size_t N,
                               T* & srcData, T** & dstData){
 
@@ -170,7 +171,7 @@ void network_t<T>::fullyConnectedForward(const Layer_t<T> & layer,
 
 //non-cblas implementaiton of forward propogation activation function(TANH)
 template <typename T>
-void network_t<T>::activationForward_TANH(const Layer_t<T> & layer,  const size_t N , T* srcData, T** & dstData){     
+void Functional_t<T>::activationForward_TANH(const Layer_t<T> & layer,  const size_t N , T* srcData, T** & dstData){     
 
      size_t output = layer.outputs;
 
@@ -198,7 +199,7 @@ void network_t<T>::activationForward_TANH(const Layer_t<T> & layer,  const size_
 
 //non-cblas implementation of fully Connected Backward Propogation.
 template<typename T>
-void network_t<T>::fullyConnectedBackward(const Layer_t<T> & layer,
+void Functional_t<T>::fullyConnectedBackward(const Layer_t<T> & layer,
                               const size_t N,
                               T* & srcData, T** & dstData){
      
@@ -230,7 +231,7 @@ void network_t<T>::fullyConnectedBackward(const Layer_t<T> & layer,
 
 //non-cblas implementaiton of forward propogation activation function(TANH)
 template <typename T>
-void network_t<T>::activationBackward_TANH(const Layer_t<T> & layer,  const size_t N , T* srcData, T** & dstData){     
+void Functional_t<T>::activationBackward_TANH(const Layer_t<T> & layer,  const size_t N , T* srcData, T** & dstData){     
 
      size_t output = layer.outputs;
 
@@ -260,7 +261,7 @@ void network_t<T>::activationBackward_TANH(const Layer_t<T> & layer,  const size
 //Input and layer.Weights already transposed for optimal row-major computation.
 #if defined (_USE_GSL) || defined (_USE_MKL)
 template <>
-void network_t<double>::fullyConnectedForward(const Layer_t<double> & layer,
+void Functional_t<double>::fullyConnectedForward(const Layer_t<double> & layer,
                                const size_t & N,
                                double* & srcData, double** & dstData)
      {
@@ -289,7 +290,7 @@ void network_t<double>::fullyConnectedForward(const Layer_t<double> & layer,
          }; 
 
 template<>
-void network_t<float>::fullyConnectedForward(const Layer_t<float> & layer,
+void Functional_t<float>::fullyConnectedForward(const Layer_t<float> & layer,
                                const size_t & N,
                                float* & srcData, float** & dstData)
      {
@@ -318,7 +319,7 @@ void network_t<float>::fullyConnectedForward(const Layer_t<float> & layer,
      };
 
 template<>
-void network_t<double>::fullyConnectedBackward(const Layer_t<double> & layer,
+void Functional_t<double>::fullyConnectedBackward(const Layer_t<double> & layer,
                                const size_t N,
                                double* & srcData, double** & dstData)
      {
@@ -335,7 +336,7 @@ void network_t<double>::fullyConnectedBackward(const Layer_t<double> & layer,
          }; 
 
 template<>
-void network_t<float>::fullyConnectedBackward(const Layer_t<float> & layer,
+void Functional_t<float>::fullyConnectedBackward(const Layer_t<float> & layer,
                                const size_t N,
                                float* & srcData, float** & dstData)
      {
@@ -356,11 +357,11 @@ void network_t<float>::fullyConnectedBackward(const Layer_t<float> & layer,
 
 
 
-/* Layer_Net_t class method definitions */
+/* NN_t class method definitions */
 
 //helper function: switch two pointers to pointers
 template <typename T>
-void Layer_Net_t<T>::switchptr(T** & alpha, T** & bravo){ 
+void NN_t<T>::switchptr(T** & alpha, T** & bravo){ 
      T** tmp;
      tmp = alpha;
      alpha = bravo;
@@ -370,7 +371,7 @@ void Layer_Net_t<T>::switchptr(T** & alpha, T** & bravo){
 
 //Delete all layers, from end to root.
 template <typename T>
-Layer_Net_t<T>::~Layer_Net_t(){
+NN_t<T>::~NN_t(){
      Layer_t<T>* curr = nullptr;
      if(root != NULL){
           curr = root;
@@ -388,7 +389,7 @@ Layer_Net_t<T>::~Layer_Net_t(){
 
 //inserting a dense layer
 template <typename T>
-void Layer_Net_t<T>::insert_layer(string &_name, size_t _inputs, size_t _outputs, 
+void NN_t<T>::insert_layer(string &_name, size_t _inputs, size_t _outputs, 
           T * & _weights, T * & _bias){
      if(root!=NULL){
           Layer_t<T> * curr = root;
@@ -403,7 +404,7 @@ void Layer_Net_t<T>::insert_layer(string &_name, size_t _inputs, size_t _outputs
 
 // Inserting an activiation layer by type (int)
 template <typename T>
- void Layer_Net_t<T>::insert_layer(string &_name, int _acttype, size_t _outputs){
+ void NN_t<T>::insert_layer(string &_name, int _acttype, size_t _outputs){
           if (root!=NULL) {
                Layer_t<T>* curr = root;
                while(curr->next) {curr = curr->next;};
@@ -417,7 +418,7 @@ template <typename T>
 
 //Inserting an activation layer by type(enum)
 template <typename T>
-void Layer_Net_t<T>::insert_layer(string &_name, ActType_t _acttype, size_t _outputs){
+void NN_t<T>::insert_layer(string &_name, ActType_t _acttype, size_t _outputs){
      if (root!=NULL) {
                Layer_t<T> * curr = root;
                while(curr->next) {curr = curr->next;};
@@ -432,7 +433,7 @@ void Layer_Net_t<T>::insert_layer(string &_name, ActType_t _acttype, size_t _out
 
 // Get layer ptr according to its index (start from 1 as 1st layer, 2 as second layer ...)
 template <typename T>
-Layer_t<T>* Layer_Net_t<T>::get_layer_by_seq(int _n){
+Layer_t<T>* NN_t<T>::get_layer_by_seq(int _n){
      Layer_t<T>* curr=root;
      int i = 1;
      
@@ -445,30 +446,20 @@ Layer_t<T>* Layer_Net_t<T>::get_layer_by_seq(int _n){
 
 //Move through network and make prediction based on all layers.     
 template <typename T>
-void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData){
+void NN_t<T>::predict(T* _inputData, size_t input, size_t N, T* & _outputData){
           if (root != NULL) {
-             
-          size_t input = _input;
-          size_t N = _N;
-    
+   
           //two pointers used to store and recieve data(switch between them)
           T** srcDataPtr = nullptr; 
           T** dstDataPtr = nullptr;
 
           //init srcDataPtr to point to tranpose of input data
-          T** temp;
-          init_mtx_in_mem<T>(temp,N,input);
-          copy(_inputData,_inputData+input*N,temp[0]);
-          
-          cout<<"Predict Input: "<<input<<" Predict N: "<<N<<endl;
-          
-          transpose_mtx<T>(srcDataPtr, temp, N, input);
-
-          clearMemo<T>(temp);
+          init_mtx_in_mem<T>(srcDataPtr, input, N);
+          copy(_inputData,_inputData+input*N,srcDataPtr[0]);
                                                   
-               Layer_t<T>* curr = root;
-               do{
-               cout<<curr->name<<endl;
+          Layer_t<T>* curr = root;
+          do{
+               // cout<<curr->name<<endl;
                //DENSE LAYER PROPOGATION
                if ( curr-> type == Type_t::DENSE ) { 
                     
@@ -496,7 +487,8 @@ void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData
                          cout << "Unknown layer type!" <<endl;
                }
 
-               } 
+          } 
+          
           while(  (curr=curr->next) != NULL);
                
           //create space for output Data
@@ -512,7 +504,7 @@ void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData
           clearMemo<T>(srcDataPtr);
           clearMemo<T>(dstDataPtr);
           srcDataPtr = nullptr;
-               dstDataPtr = nullptr;  
+          dstDataPtr = nullptr;  
      }
 
      return;
@@ -520,14 +512,102 @@ void Layer_Net_t<T>::predict(T* _inputData, int _N, int _input, T* & _outputData
 
 
 
-template<typename T>
-allNets_t<T>::allNets_t():  nets(nullptr), numNetworks(0) {};
+//Move backwards through the network and return the gradient
+template <typename T>
+void NN_t<T>::backward(T* _inputData, size_t input, size_t N, T* & _outputData){
+          if (root != NULL) {
+               Layer_t<T>* curr = root;
+               while (curr->next != nullptr) curr = curr->next ;
+
+               //two pointers used to store and recieve data(switch between them)
+               T** srcDataPtr = nullptr; 
+               T** dstDataPtr = nullptr;
+
+
+               //init srcDataPtr to point to input data
+               init_mtx_in_mem<T>(srcDataPtr, input, N);
+               if (_inputData != nullptr ){
+                    copy(_inputData,_inputData+input*N,srcDataPtr[0]);
+               } else {
+                    std::fill_n(*srcDataPtr, N*input, 1.0);
+               };
+               
+
+
+               
+
+               while( true ){
+                    //DENSE LAYER PROPOGATION
+                    if ( curr-> type == Type_t::DENSE ) { 
+                         
+                              // If it is a dense layer, we perform fully_connected backward 
+                              neural_net.fullyConnectedBackward((*curr), N, *srcDataPtr, dstDataPtr);
+                         //note: inside fullyConnectedForward, output is updated, and input=output for next layer use.
+
+                              switchptr(srcDataPtr, dstDataPtr);
+                         } 
+                    //ACTIVATION LAYER PROPOGATION
+                    else if (curr -> type == Type_t::ACTIVIATION){
+                         // If it is an activiation layer, perform corresponding activiation forwards
+                         if (curr -> acttype == ActType_t::TANH){
+                              neural_net.activationBackward_TANH((*curr),N, *srcDataPtr, dstDataPtr);
+                              switchptr(srcDataPtr, dstDataPtr);
+                         } 
+                         else if (curr->acttype == ActType_t::LINEAR) {    
+          
+                              } 
+                         else {
+                              cout <<"Unknown Activation Type!"<<endl;
+                         }
+                    } 
+                    else {
+                              cout << "Unknown layer type!" <<endl;
+                    };
+
+                    if (curr->prev != NULL ) {
+                         curr = curr->prev;
+                    } else{
+                         break;
+                    };
+
+               };
+               
+          //create space for output Data
+          if(_outputData!=NULL){
+               delete[] _outputData;
+          }
+          _outputData = new T[curr->inputs * N];
+
+          //copy from srcDataPtr to outputData          
+          copy(*srcDataPtr,*srcDataPtr + curr->inputs * N, _outputData);
+                         
+          //Release Resources
+          clearMemo<T>(srcDataPtr);
+          clearMemo<T>(dstDataPtr);
+          srcDataPtr = nullptr;
+          dstDataPtr = nullptr;
+     }
+
+     return;
+}    
+
+
+
 
 template<typename T>
-allNets_t<T>::allNets_t(size_t _numNetworks, const char * filename, const char * checkchar): 
-      numNetworks(_numNetworks){
+allNN_t<T>::allNN_t():  nets(nullptr), numNetworks(0) {};
 
-      nets = new Layer_Net_t<T>[numNetworks];
+template<typename T>
+allNN_t<T>::allNN_t(size_t _numNetworks, const char * filename, const char * checkchar):nets(nullptr) {
+     init_allNNs(_numNetworks, filename,  checkchar);
+}
+
+
+template<typename T>
+void allNN_t<T>::init_allNNs(size_t _numNetworks, const char * filename, const char * checkchar){
+      numNetworks = _numNetworks;
+
+      nets = new NN_t<T>[numNetworks];
       H5::H5File file(filename,H5F_ACC_RDONLY);
 
       hsize_t data_rank=0;
@@ -555,9 +635,9 @@ allNets_t<T>::allNets_t(size_t _numNetworks, const char * filename, const char *
                   // get this layer's dataset names(weights and bias)
                   vector<string> weights;
                   weights = Read_Attr_Data_By_Seq(file,seqPath.c_str(), WEIGHTNAMES);
-                  cout<<*it<<endl;
+               //    cout<<*it<<endl;
 
-                  cout << " Reading out data: " << *it << endl;
+                  cerr << " Reading out data: " << *it << endl;
                   for (auto it2 = weights.begin(); it2 != weights.end(); it2++){ 
                         // for one data set get path
                         string datasetPath = mkpath(seqPath,*it2) ;
@@ -569,25 +649,25 @@ allNets_t<T>::allNets_t(size_t _numNetworks, const char * filename, const char *
                          if ((*it2).compare(((*it2).length()-1),1, checkchar )==0){
                               
                               
-                                   // get out weight data
+                              // get out weight data
                               Read_Layer_Data_By_DatName<T> (file, datasetPath.c_str(), data, data_rank, data_dims); 
                          }
                          else{
                               // get out bias data
                               Read_Layer_Data_By_DatName<T> (file, datasetPath.c_str(), bias, bias_rank, bias_dims);\
-                              cout << " Initialize layer : " << DLname << endl;
+                              cerr << " Initialize layer : " << DLname << endl;
                          
                               nets[currentNetNum].insert_layer(DLname, data_dims[0], data_dims[1], data, bias);
 
-                              cout << " Layer " << DLname << "  is initialized. " <<endl <<endl; 
+                              cerr << " Layer " << DLname << "  is initialized. " <<endl <<endl; 
 
 
                               //insert tanh activation layer afterwards
                               string actName = "Activation_" + to_string(layerID/2);
                               
-                              cout << " Initialize layer : " << actName << endl;
+                              cerr << " Initialize layer : " << actName << endl;
                               nets[currentNetNum].insert_layer(actName, ActType_t::TANH,data_dims[1]);
-                              cout << " Layer " << actName << "  is initialized. " <<endl <<endl;                                    
+                              cerr << " Layer " << actName << "  is initialized. " <<endl <<endl;                                    
                     
                               //reset values for next loop
                               data_rank=0;
@@ -599,8 +679,8 @@ allNets_t<T>::allNets_t(size_t _numNetworks, const char * filename, const char *
                   } 
                   //make last layer activation type linear
                   nets[currentNetNum].get_layer_by_seq(layerID) -> acttype=ActType_t::LINEAR;
-                  cout<<"Changing Layer "<<nets[currentNetNum].get_layer_by_seq(layerID)->name<<" to Linear Activation"<<endl;
-                  cout << "Inserting Layers " << *it<< " Finished!"  <<endl;
+                  cerr<<"Changing Layer "<<nets[currentNetNum].get_layer_by_seq(layerID)->name<<" to Linear Activation"<<endl;
+                  cerr << "Inserting Layers " << *it<< " Finished!"  <<endl;
 
                   currentNetNum++;
                   
@@ -615,14 +695,13 @@ allNets_t<T>::allNets_t(size_t _numNetworks, const char * filename, const char *
      if(data!=NULL)       delete[] data;
      if(data_dims!=NULL)  delete[] data_dims;      
      file.close();
-     return;
-                                                     
+     return;                             
 }
 
 
 template<typename T>
-allNets_t<T>::~allNets_t(){
-      delete [] nets;
+allNN_t<T>::~allNN_t(){
+     if (nets != nullptr) delete [] nets;
 }
 
 
@@ -630,16 +709,14 @@ allNets_t<T>::~allNets_t(){
 template struct Layer_t<double>;
 template struct Layer_t<float>;
 
-template struct allNets_t<double>;
-template struct allNets_t<float>;
+template class Functional_t<double>;
+template class Functional_t<float>;
 
-template class network_t<double>;
-template class network_t<float>;
+template class NN_t<double>;
+template class NN_t<float>;
 
-
-template class Layer_Net_t<double>;
-template class Layer_Net_t<float>;
-
+template struct allNN_t<double>;
+template struct allNN_t<float>;
 
 
 

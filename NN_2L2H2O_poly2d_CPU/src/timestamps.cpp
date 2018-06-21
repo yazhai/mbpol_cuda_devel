@@ -7,6 +7,8 @@
 #include <iomanip>
 
 using namespace std;
+using namespace MBbpnnPlugin;
+
 
 timestamp::timestamp(int _markid, std::string _label): markid(_markid),label(_label){
      timespan=0;
