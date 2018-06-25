@@ -145,7 +145,8 @@ void load_seq(const char* _seqfile);
 // default 2h2o
 void load_paramfile_2h2o_default();
 void load_paramfile_3h2o_default();
-void load_seq_2h2o_3h2o_default();
+void load_seq_2h2o_default();
+void load_seq_3h2o_default();
 void load_scale_2h2o_default();
 void load_scale_3h2o_default();
 //=================================================================================

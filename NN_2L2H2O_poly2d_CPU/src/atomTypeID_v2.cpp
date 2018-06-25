@@ -393,7 +393,7 @@ int atom_Type_ID_t<T>::read_seq_from_file(const char* _file) {
 
 // loading a default sequence for mbpol NN model
 template<typename T>
-void atom_Type_ID_t<T>::load_default_2h2o_3h2o_seq(){
+void atom_Type_ID_t<T>::load_default_2h2o_seq(){
      // read_seq_from_file("Gfn_order.dat");
      //
      // hard-coded the h2o sequence
@@ -472,6 +472,101 @@ void atom_Type_ID_t<T>::load_default_2h2o_3h2o_seq(){
      seq1_oneline.push_back(h);
      seq1_oneline.push_back(h);
      seq1_idx.push_back(seq1_oneline);          
+
+     seq_by_idx.push_back(seq1_idx);
+
+};
+
+
+
+// loading a default sequence for mbpol NN model
+template<typename T>
+void atom_Type_ID_t<T>::load_default_3h2o_seq(){
+     // read_seq_from_file("Gfn_order.dat");
+     //
+     // hard-coded the h2o sequence
+
+     seq.clear();
+     seq_by_idx.clear();
+
+     idx_t o = get_type_idx("O", true );
+     idx_t h = get_type_idx("H", true );
+     
+
+     if( (h == DEFAULT_ID) || (o == DEFAULT_ID) ) {
+          std::cerr << " ** Error at initiating default h2o sequence. " << std::endl;
+          return;
+     }
+
+     std::vector<std::string> seq1 ;
+     seq1.push_back("OH");
+     seq1.push_back("OO");
+     seq1.push_back("OOO");
+     seq1.push_back("OHO");
+     seq1.push_back("OHH");
+     seq.push_back(seq1);
+
+     seq1.clear();
+     seq1.push_back("HH");
+     seq1.push_back("HO");
+     seq1.push_back("HHH");
+     seq1.push_back("HHO");
+     seq.push_back(seq1);
+
+     std::vector<std::vector<idx_t>> seq1_idx;
+     
+     std::vector<idx_t> seq1_oneline;
+     seq1_oneline.push_back(o);
+     seq1_oneline.push_back(h);
+     seq1_idx.push_back(seq1_oneline);
+
+     seq1_oneline.clear();
+     seq1_oneline.push_back(o);
+     seq1_oneline.push_back(o);
+     seq1_idx.push_back(seq1_oneline);     
+
+     seq1_oneline.clear();
+     seq1_oneline.push_back(o);
+     seq1_oneline.push_back(o);
+     seq1_oneline.push_back(o);
+     seq1_idx.push_back(seq1_oneline);       
+
+     seq1_oneline.clear();
+     seq1_oneline.push_back(o);
+     seq1_oneline.push_back(h);
+     seq1_oneline.push_back(o);
+     seq1_idx.push_back(seq1_oneline);     
+
+     seq1_oneline.clear();
+     seq1_oneline.push_back(o);
+     seq1_oneline.push_back(h);
+     seq1_oneline.push_back(h);
+     seq1_idx.push_back(seq1_oneline);          
+
+     seq_by_idx.push_back(seq1_idx);
+     seq1_idx.clear();
+
+     seq1_oneline.clear();
+     seq1_oneline.push_back(h);
+     seq1_oneline.push_back(h);
+     seq1_idx.push_back(seq1_oneline);
+
+     seq1_oneline.clear();
+     seq1_oneline.push_back(h);
+     seq1_oneline.push_back(o);
+     seq1_idx.push_back(seq1_oneline);     
+
+     seq1_oneline.clear();
+     seq1_oneline.push_back(h);
+     seq1_oneline.push_back(h);
+     seq1_oneline.push_back(h);
+     seq1_idx.push_back(seq1_oneline);  
+
+     seq1_oneline.clear();
+     seq1_oneline.push_back(h);
+     seq1_oneline.push_back(h);
+     seq1_oneline.push_back(o);
+     seq1_idx.push_back(seq1_oneline);     
 
      seq_by_idx.push_back(seq1_idx);
 

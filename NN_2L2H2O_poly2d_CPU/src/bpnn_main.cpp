@@ -27,7 +27,7 @@ bpnn_t<T>::bpnn_t(string tag): Gfunction_t<T>(), allNN_t<T>(), energy_(nullptr){
           this->insert_atom("H");
           this->insert_atom("H");
 
-          this->load_seq_2h2o_3h2o_default();
+          this->load_seq_2h2o_default();
           this->load_paramfile_2h2o_default();
           this->load_scale_2h2o_default();
 
@@ -35,7 +35,7 @@ bpnn_t<T>::bpnn_t(string tag): Gfunction_t<T>(), allNN_t<T>(), energy_(nullptr){
           
           cerr << " === Model initialized successfully ! === " << endl;
      } else if (tag == "3h2o_default") {
-          cerr << " === Initialize default 2B H2O model ... === " << endl;          
+          cerr << " === Initialize default 3B H2O model ... === " << endl;          
 
           this->insert_atom("O");
           this->insert_atom("H");
@@ -43,8 +43,11 @@ bpnn_t<T>::bpnn_t(string tag): Gfunction_t<T>(), allNN_t<T>(), energy_(nullptr){
           this->insert_atom("O");
           this->insert_atom("H");
           this->insert_atom("H");
+          this->insert_atom("O");
+          this->insert_atom("H");
+          this->insert_atom("H");          
 
-          this->load_seq_2h2o_3h2o_default();
+          this->load_seq_3h2o_default();
           this->load_paramfile_3h2o_default();
           this->load_scale_3h2o_default();
 
@@ -174,28 +177,6 @@ T MBbpnnPlugin::get_eng_2h2o(size_t nd, std::vector<T>xyz1, std::vector<T>xyz2, 
      bpnn_2h2o.cal_switch(2);
 
 
-     // for (size_t k = 0; k < bpnn_2h2o.NCLUSTER; k++){
-     //      cout << " Cluster  " << k << " : " << endl;
-     //      for(idx_t i = 0; i < bpnn_2h2o.NATOM; i ++ ){
-     //           idx_t tp = bpnn_2h2o.TYPE_EACHATOM[i] ;
-               
-     //           for (idx_t j = 0; j < bpnn_2h2o.G_param_max_size[tp]; j++){        
-     //                cout << setw(8) << bpnn_2h2o.G[i][j][k];
-     //           }
-     //           cout << endl;
-     //      }
-     // }
-
-
-
-
-
-
-
-
-
-
-
 
      if (bpnn_2h2o.energy_ != nullptr) delete[] bpnn_2h2o.energy_ ;
 
@@ -287,7 +268,7 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
      static bpnn_t<T> bpnn_2h2o;
      bpnn_2h2o.load_xyzfile(xyzfile) ; 
 
-     bpnn_2h2o.load_seq_2h2o_3h2o_default();
+     bpnn_2h2o.load_seq_2h2o_default();
      bpnn_2h2o.load_paramfile_2h2o_default();
      bpnn_2h2o.load_scale_2h2o_default();
      bpnn_2h2o.init_allNNs(2, INFILE_2B, CHECKCHAR2);
@@ -314,7 +295,7 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
      T energy = 0;
      for (size_t i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
           energy +=  bpnn_2h2o.energy_[i] * bpnn_2h2o.switch_factor[i];
-          cout << " Dimer " << i << " 's energy is " << bpnn_2h2o.energy_[i]* bpnn_2h2o.switch_factor[i] * (EUNIT) << endl;
+          // cout << " Dimer " << i << " 's energy is " << bpnn_2h2o.energy_[i]* bpnn_2h2o.switch_factor[i] * (EUNIT) << endl;
      }
 
 
@@ -380,7 +361,7 @@ T MBbpnnPlugin::get_eng_3h2o(const char* xyzfile, bool ifgrad ){
      static bpnn_t<T> bpnn_3h2o;
      bpnn_3h2o.load_xyzfile(xyzfile) ; 
 
-     bpnn_3h2o.load_seq_2h2o_3h2o_default();
+     bpnn_3h2o.load_seq_3h2o_default();
      bpnn_3h2o.load_paramfile_3h2o_default();
      bpnn_3h2o.load_scale_3h2o_default();
      bpnn_3h2o.init_allNNs(2, INFILE_3B, CHECKCHAR2);
@@ -407,7 +388,10 @@ T MBbpnnPlugin::get_eng_3h2o(const char* xyzfile, bool ifgrad ){
      T energy = 0;
      for (size_t i = 0; i < bpnn_3h2o.NCLUSTER; i++ ){
           energy +=  bpnn_3h2o.energy_[i] * bpnn_3h2o.switch_factor[i];
-          cout << " Dimer " << i << " 's energy is " << bpnn_3h2o.energy_[i]* bpnn_3h2o.switch_factor[i] * (EUNIT) << endl;
+          // cout << " Dimer " << i << " 's energy is " << bpnn_3h2o.energy_[i]* bpnn_3h2o.switch_factor[i] * (EUNIT) << endl;
+
+          // cout << " Dimer " << i << " 's energy is " << bpnn_3h2o.energy_[i]* bpnn_3h2o.switch_factor[i] *1 << endl;
+
      }
 
 
@@ -698,6 +682,11 @@ int main(int argc, const char* argv[]){
           } else if ( atoi(argv[1]) == 3 ) {
                get_eng_3h2o<double>(argv[2], ifgrad);
           }
+
+
+
+
+
      }
 
      return 0;

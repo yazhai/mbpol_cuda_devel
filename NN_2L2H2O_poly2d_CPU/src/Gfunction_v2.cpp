@@ -389,12 +389,15 @@ void Gfunction_t<T>::scale_G(std::string tag){
           // scale these G results with G_scale
           for (auto it = (*atoms_it).begin(); it!= (*atoms_it).end(); it++){
                T** g = G[*it] ;
+               size_t ncluster = this->NCLUSTER;
+               size_t pmax = G_param_max_size[atom_type];
+               T* gsc = G_scale[atom_type];
 #ifdef _OPENMP
-#pragma omp parallel for simd shared(g, this->NCLUSTER, atom_type, G_scale, G_param_max_size)
+#pragma omp parallel for simd shared(g, ncluster,  gsc, pmax)
 #endif 
-for(size_t clusterid=0; clusterid < this->NCLUSTER; clusterid++){
-               for (size_t p = 0; p < G_param_max_size[atom_type]; p++){                   
-                    g[p][clusterid] = g[p][clusterid] * G_scale[atom_type][p];
+for(size_t clusterid=0; clusterid < ncluster; clusterid++){
+               for (size_t p = 0; p < pmax ; p++){    
+                    g[p][clusterid] = g[p][clusterid] * gsc[p];
                }
 }
           }
@@ -412,12 +415,15 @@ void Gfunction_t<T>::scale_G_grd(std::vector<T**> dfdG){
           // scale these G results with G_scale
           for (auto it = (*atoms_it).begin(); it!= (*atoms_it).end(); it++){
                T** dg = dfdG[*it] ;
+               size_t ncluster = this->NCLUSTER;
+               size_t pmax = G_param_max_size[atom_type];
+               T* gsc =G_scale[atom_type];
 #ifdef _OPENMP
-#pragma omp parallel for simd shared(dg, this->NCLUSTER, atom_type, G_scale, G_param_max_size)
+#pragma omp parallel for simd shared(dg, ncluster,  gsc, pmax)
 #endif 
-for(size_t clusterid=0; clusterid < this->NCLUSTER; clusterid++){
-               for (size_t p = 0; p < G_param_max_size[atom_type]; p++){                   
-                    dg[p][clusterid] = dg[p][clusterid] * G_scale[atom_type][p] ;
+for(size_t clusterid=0; clusterid < ncluster ; clusterid++){
+               for (size_t p = 0; p < pmax; p++){
+                    dg[p][clusterid] = dg[p][clusterid] * gsc[p] ;
                };
 };
           };
@@ -453,25 +459,29 @@ T Gfunction_t<T>::base_dfdswitch(T ri,T rf,T r){
 
 template <typename T>
 void Gfunction_t<T>::fswitch_2b(T ri, T rf, idx_t at1, idx_t at2) {
+     size_t ncluster = this->NCLUSTER;
+     T* sw = switch_factor;
 #ifdef _OPENMP
-#pragma omp parallel for simd shared(this->NCLUSTER, switch_factor, ri, rf)
+#pragma omp parallel for simd shared(ncluster, sw, ri, rf)
 #endif  
-    for(size_t i=0;i<this->NCLUSTER;i++){
+    for(size_t i=0;i<ncluster;i++){
         T dist = get_dist(at1,at2,i);
-        switch_factor[i] = base_fswitch(ri,rf,dist);
+        sw[i] = base_fswitch(ri,rf,dist);
     }
 }
 
 template <typename T>
 void Gfunction_t<T>::fswitch_3b(T ri, T rf, idx_t at1, idx_t at2, idx_t at3) {
+     size_t ncluster = this->NCLUSTER;
+     T* sw = switch_factor;
 #ifdef _OPENMP
-#pragma omp parallel for simd shared(this->NCLUSTER, switch_factor, ri, rf)
+#pragma omp parallel for simd shared(ncluster, sw, ri, rf)
 #endif      
-    for(size_t i=0;i<this->NCLUSTER;i++){
+    for(size_t i=0;i<ncluster;i++){
         T s01 = base_fswitch(ri,rf,get_dist(at1,at2,i));
         T s02 = base_fswitch(ri,rf,get_dist(at1,at3,i));
         T s12 = base_fswitch(ri,rf,get_dist(at2,at3,i));
-        switch_factor[i] = s01*s02 + s01*s12 + s02*s12;
+        sw[i] = s01*s02 + s01*s12 + s02*s12;
     }
 }
 
@@ -625,7 +635,8 @@ void Gfunction_t<T>::load_seq(const char* _seqfile){
      if ( strlen(_seqfile) >0 ){
            this->read_seq_from_file(_seqfile);
      } else {
-           this->load_default_2h2o_3h2o_seq();
+          //  this->load_default_2h2o_3h2o_seq();
+          std::cerr << " NO sequential is loaded ! " << std::endl;
      };
 };
 
@@ -643,8 +654,14 @@ void Gfunction_t<T>::load_paramfile_3h2o_default(){
 
 
 template <typename T>
-void Gfunction_t<T>::load_seq_2h2o_3h2o_default(){
-      this->load_default_2h2o_3h2o_seq();
+void Gfunction_t<T>::load_seq_2h2o_default(){
+      this->load_default_2h2o_seq();
+};
+
+
+template <typename T>
+void Gfunction_t<T>::load_seq_3h2o_default(){
+      this->load_default_3h2o_seq();
 };
 
 

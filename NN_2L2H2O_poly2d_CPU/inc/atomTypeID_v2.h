@@ -96,7 +96,8 @@ public:
      //=========================================================================
      
      // loading a default sequence for mbpol NN model
-     void load_default_2h2o_3h2o_seq();
+     void load_default_2h2o_seq();
+     void load_default_3h2o_seq();
 };
 
 
