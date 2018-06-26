@@ -25,11 +25,10 @@ else(${_CMP_INTEL})
 endif(${_CMP_INTEL})
 
 #resource folder
-set(RES_DIR_2B ${CMAKE_SOURCE_DIR}/res/BPNN-2b)
-set(RES_DIR_3B ${CMAKE_SOURCE_DIR}/res/BPNN-3b)
+set(RES_DIR ${CMAKE_SOURCE_DIR}/res)
 
 #resource files
-file(GLOB RES "${RES_DIR_2B}/*" "${RES_DIR_3B}/*")
+file(GLOB RES "${RES_DIR}/*.*" "${RES_DIR}/BPNN-2b/*" "${RES_DIR}/BPNN-3b/*")
 
 #source code folder
 set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
