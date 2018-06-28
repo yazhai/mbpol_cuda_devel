@@ -42,7 +42,7 @@ struct Layer_t{
       
      size_t inputs;     // number of input dimension
      size_t outputs;    // number of output dimension
-     T ** weights; // weight matrix(stored as outputs x inputs)
+     T ** weights; // weight matrix(stored as outputs x inputs) in fully connected layer, or intermediate data in activiation layer as outputs x N
      T * bias; // bias vector(1xoutput) or (outputx1)
 
      Layer_t * prev = nullptr;
@@ -80,9 +80,9 @@ public:
                                T* & srcData, T** & dstData);
 
      //non-cblas implementaiton of forward propogation activation function(TANH)
-     void activationForward_TANH(const Layer_t<T> & layer,
+     void activationForward_TANH(Layer_t<T> & layer,
                               const size_t N , 
-                              T* srcData, T** & dstData);
+                              T* srcData, T** & dstData, bool ifgrd = false );
 
 
      //non-cblas implementation of fully Connected Backward Propogation.
@@ -158,6 +158,9 @@ public:
      //Move through network and make prediction based on all layers.     
      void predict(T* _inputData, size_t _input, size_t _N, T* & _outputData);
 
+
+     //Move through network and make prediction based on all layers.     
+     void predict_and_getgrad(T* _inputData, size_t _input, size_t _N, T* & _outputData, T* & _grdData);
 
      //Move backwards through the network and return the gradient
      void backward(T* _inputData, size_t _input, size_t _N, T* & _outputData);

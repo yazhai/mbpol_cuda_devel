@@ -446,7 +446,7 @@ T Gfunction_t<T>::base_fswitch(T ri,T rf,T r){
 
 
 template <typename T>
-T Gfunction_t<T>::base_dfdswitch(T ri,T rf,T r){
+T Gfunction_t<T>::base_dswitch(T ri,T rf,T r){
      T value = 0;
 	if ( (r<rf) && ( r> ri ) ) {
           T coef = M_PI/(rf-ri); 
@@ -458,45 +458,138 @@ T Gfunction_t<T>::base_dfdswitch(T ri,T rf,T r){
 
 
 template <typename T>
-void Gfunction_t<T>::fswitch_2b(T ri, T rf, idx_t at1, idx_t at2) {
+void Gfunction_t<T>::fswitch_2b(T ri, T rf, idx_t at0, idx_t at1) {
      size_t ncluster = this->NCLUSTER;
      T* sw = switch_factor;
 #ifdef _OPENMP
 #pragma omp parallel for simd shared(ncluster, sw, ri, rf)
 #endif  
-    for(size_t i=0;i<ncluster;i++){
-        T dist = get_dist(at1,at2,i);
-        sw[i] = base_fswitch(ri,rf,dist);
-    }
+     for(size_t i=0;i<ncluster;i++){
+          T dist = get_dist(at0,at1,i);
+          sw[i] = base_fswitch(ri,rf,dist);
+     }
 }
 
 template <typename T>
-void Gfunction_t<T>::fswitch_3b(T ri, T rf, idx_t at1, idx_t at2, idx_t at3) {
+void Gfunction_t<T>::fswitch_3b(T ri, T rf, idx_t at0, idx_t at1, idx_t at2) {
      size_t ncluster = this->NCLUSTER;
      T* sw = switch_factor;
 #ifdef _OPENMP
 #pragma omp parallel for simd shared(ncluster, sw, ri, rf)
 #endif      
-    for(size_t i=0;i<ncluster;i++){
-        T s01 = base_fswitch(ri,rf,get_dist(at1,at2,i));
-        T s02 = base_fswitch(ri,rf,get_dist(at1,at3,i));
-        T s12 = base_fswitch(ri,rf,get_dist(at2,at3,i));
-        sw[i] = s01*s02 + s01*s12 + s02*s12;
-    }
+     for(size_t i=0;i<ncluster;i++){
+          T s01 = base_fswitch(ri,rf,get_dist(at0,at1,i));
+          T s02 = base_fswitch(ri,rf,get_dist(at0,at2,i));
+          T s12 = base_fswitch(ri,rf,get_dist(at1,at2,i));
+          sw[i] = s01*s02 + s01*s12 + s02*s12;
+     }
+}
+
+
+
+template <typename T>
+void Gfunction_t<T>::fswitch_with_grad_2b(T ri, T rf, idx_t at0, idx_t at1) {
+     size_t ncluster = this->NCLUSTER;
+     T* sw = switch_factor;
+     T** dsw = dswitchdx;
+#ifdef _OPENMP
+#pragma omp parallel for simd shared(ncluster, sw, dsw, ri, rf, at0, at1)
+#endif  
+     for(size_t i=0;i<ncluster;i++){
+          T dist = get_dist(at0,at1,i);
+          T dRdx[3];
+          get_dRdX_byID(&(dRdx[0]), at0, at1, i);
+          sw[i] = base_fswitch(ri,rf,dist);
+          T dswitch = base_dswitch(ri,rf,dist);
+          
+          dsw[0][i] = dswitch * dRdx[0] ;
+          dsw[1][i] = dswitch * dRdx[1] ; 
+          dsw[2][i] = dswitch * dRdx[2] ;
+          dsw[3][i] =-dswitch * dRdx[0] ;
+          dsw[4][i] =-dswitch * dRdx[1] ; 
+          dsw[5][i] =-dswitch * dRdx[2] ;
+     }
 }
 
 template <typename T>
-void Gfunction_t<T>::cal_switch(int flag, idx_t at1, idx_t at2, idx_t at3){
+void Gfunction_t<T>::fswitch_with_grad_3b(T ri, T rf, idx_t at0, idx_t at1, idx_t at2) {
+     size_t ncluster = this->NCLUSTER;
+     T* sw = switch_factor;
+     T** dsw = dswitchdx ;
+#ifdef _OPENMP
+#pragma omp parallel for simd shared(ncluster, sw, dsw, ri, rf, at0, at1, at2)
+#endif      
+     for(size_t i=0;i<ncluster;i++){
+          T r01 = get_dist(at0,at1,i);
+          T r02 = get_dist(at0,at2,i);
+          T r12 = get_dist(at1,at2,i);
+
+          T s01 = base_fswitch(ri,rf,r01);
+          T s02 = base_fswitch(ri,rf,r02);
+          T s12 = base_fswitch(ri,rf,r12);
+
+          T ds01 = base_dswitch(ri, rf, r01);
+          T ds02 = base_dswitch(ri, rf, r02);
+          T ds12 = base_dswitch(ri, rf, r12);
+
+          sw[i] = s01*s02 + s01*s12 + s02*s12;
+
+          T dRdx[3][3] ;
+          get_dRdX_byID(&(dRdx[0][0]), at0, at1, i);
+          get_dRdX_byID(&(dRdx[1][0]), at0, at2, i);   
+          get_dRdX_byID(&(dRdx[2][0]), at1, at2, i);
+
+          T dsdr01 = (s02 + s12) * ds01;
+          T dsdr02 = (s01 + s12) * ds02;
+          T dsdr12 = (s01 + s02) * ds12;
+
+          // dsw at0
+          dsw[0][i] = dsdr01 * dRdx[0][0] + dsdr02 * dRdx[1][0];
+          dsw[1][i] = dsdr01 * dRdx[0][1] + dsdr02 * dRdx[1][1];
+          dsw[2][i] = dsdr01 * dRdx[0][2] + dsdr02 * dRdx[1][2];                    
+          // dsw at1
+          dsw[3][i] =-dsdr01 * dRdx[0][0] + dsdr12 * dRdx[2][0];
+          dsw[4][i] =-dsdr01 * dRdx[0][1] + dsdr12 * dRdx[2][1];
+          dsw[5][i] =-dsdr01 * dRdx[0][2] + dsdr12 * dRdx[2][2];          
+
+          // dsw at2
+          dsw[6][i] =-dsdr02 * dRdx[1][0] - dsdr12 * dRdx[2][0];
+          dsw[7][i] =-dsdr02 * dRdx[1][1] - dsdr12 * dRdx[2][1];
+          dsw[8][i] =-dsdr02 * dRdx[1][2] - dsdr12 * dRdx[2][2];             
+     }
+}
+
+template <typename T>
+void Gfunction_t<T>::cal_switch(int flag, idx_t at0, idx_t at1, idx_t at2){
     const T r1 = 4.5, r2 = 6.5, r3 = 0;
     if(switch_factor != nullptr)  delete [] switch_factor;
     switch_factor = new T[this->NCLUSTER];
     
     // hard coded for 2B/3B H2O
     if(flag == 2){      //if 2 boby 
-          fswitch_2b(r1, r2, at1, at2);
+          fswitch_2b(r1, r2, at0, at1);
     }
-    else{
-          fswitch_3b(r3, r1, at1, at2, at3);      //else 3 body
+    else{ //else 3 body
+          fswitch_3b(r3, r1, at0, at1, at2);
+    }
+    return;
+}
+
+
+template <typename T>
+void Gfunction_t<T>::cal_switch_with_grad(int flag, idx_t at0, idx_t at1, idx_t at2){
+    const T r1 = 4.5, r2 = 6.5, r3 = 0;
+    if(switch_factor != nullptr)  delete [] switch_factor;
+    switch_factor = new T[this->NCLUSTER];
+    
+    // hard coded for 2B/3B H2O
+    if(flag == 2){      //if 2 boby 
+          init_mtx_in_mem(dswitchdx, 6, this->NCLUSTER);
+          fswitch_with_grad_2b(r1, r2, at0, at1);
+    }
+    else{ //else 3 body
+          init_mtx_in_mem(dswitchdx, 9, this->NCLUSTER);
+          fswitch_with_grad_3b(r3, r1, at0, at1, at2);
     }
     return;
 }
@@ -504,71 +597,99 @@ void Gfunction_t<T>::cal_switch(int flag, idx_t at1, idx_t at2, idx_t at3){
 
 
 template <typename T>
-void Gfunction_t<T>::get_dfdx_from_switch(int flag, T* e, idx_t at0, idx_t at1, idx_t at2){
-    const T r1 = 4.5, r2 = 6.5, r3 = 0;
-    if(dfdswitch != nullptr) delete [] dfdswitch;
-    dfdswitch = new T[this->NCLUSTER];
-    if(flag == 2){      //if 2 body
-          for(size_t id_cluster=0; id_cluster < this->NCLUSTER; id_cluster++){
-               T R = get_dist(at0, at1, id_cluster);
-               T dfdRtmp = base_dfdswitch(r1, r2, R) * e[id_cluster] ;
+void Gfunction_t<T>::scale_dfdx_with_switch(int flag, T* e, idx_t at0, idx_t at1, idx_t at2){
 
-               // get dRdX
-               T dtmp[3]; 
-               get_dRdX_byID(&(dtmp[0]), at0, at1, id_cluster);
+     T** dfdx = dfdxyz ;
+     T** dsw  = dswitchdx ;
+     T*  s = switch_factor ;
+     size_t N = this->NCLUSTER;    
 
-               // update atom0
-               dfdxyz[3 * at0    ][id_cluster] += dfdRtmp * dtmp[0];
-               dfdxyz[3 * at0 + 1][id_cluster] += dfdRtmp * dtmp[1];
-               dfdxyz[3 * at0 + 2][id_cluster] += dfdRtmp * dtmp[2];
-
-               //update atom1
-               dfdxyz[3 * at1    ][id_cluster] -= dfdRtmp * dtmp[0];
-               dfdxyz[3 * at1 + 1][id_cluster] -= dfdRtmp * dtmp[1];
-               dfdxyz[3 * at1 + 2][id_cluster] -= dfdRtmp * dtmp[2];
+    if(flag == 2){      //if 2 body   
+          for(idx_t at = 0; at < this->NATOM; at++){
+               if ( at == at0 ) {  // if the atom is involved with switching factor calculation, scale the dfdx and then add the gradient from   
+#ifdef _OPENMP
+#pragma omp parallel for simd shared(e, at0, at1, at2, dfdx, dsw, s)
+#endif          
+                    for(size_t i=0; i < N; i++){
+                         dfdx[3*at    ][i] *= s[i]; 
+                         dfdx[3*at + 1][i] *= s[i]; 
+                         dfdx[3*at + 2][i] *= s[i]; 
+                         dfdx[3*at    ][i] += e[i] * dsw[0][i]; 
+                         dfdx[3*at + 1][i] += e[i] * dsw[1][i]; 
+                         dfdx[3*at + 2][i] += e[i] * dsw[2][i];
+                    }
+               } else if( at == at1 ) { 
+#ifdef _OPENMP
+#pragma omp parallel for simd shared(e, at0, at1, at2, dfdx, dsw, s)
+#endif          
+                    for(size_t i=0; i < N; i++){
+                         dfdx[3*at    ][i] *= s[i]; 
+                         dfdx[3*at + 1][i] *= s[i]; 
+                         dfdx[3*at + 2][i] *= s[i]; 
+                         dfdx[3*at    ][i] += e[i] * dsw[3][i]; 
+                         dfdx[3*at + 1][i] += e[i] * dsw[4][i]; 
+                         dfdx[3*at + 2][i] += e[i] * dsw[5][i];
+                    }
+               } else { // if the atom is not involved with switching factor calculation, scale the dfdx with switching factor
+#ifdef _OPENMP
+#pragma omp parallel for simd shared(e, at0, at1, at2, dfdx, dsw, s)
+#endif          
+                    for(size_t i=0; i < N; i++){
+                         dfdx[3*at    ][i] *= s[i]; 
+                         dfdx[3*at + 1][i] *= s[i]; 
+                         dfdx[3*at + 2][i] *= s[i];             
+                    }
+               }
           }
     }
     else{
-          for(size_t id_cluster=0; id_cluster < this->NCLUSTER; id_cluster++){
-
-               // get dRdX
-               T dij = get_dist(at0, at1, id_cluster);
-               T dik = get_dist(at0, at2, id_cluster);
-               T djk = get_dist(at1, at2, id_cluster);
-
-               T dRdxtmp[3][3] ;
-               get_dRdX_byID(dRdxtmp[0], at0, at1, id_cluster) ;
-               get_dRdX_byID(dRdxtmp[1], at0, at2, id_cluster) ;
-               get_dRdX_byID(dRdxtmp[2], at1, at2, id_cluster) ;
-
-               T fs_ij = base_fswitch(r3, r1, dij);
-               T fs_ik = base_fswitch(r3, r1, dik);
-               T fs_jk = base_fswitch(r3, r1, djk);
-
-               T df_ij = base_dfdswitch(r3, r1, dij);
-               T df_ik = base_dfdswitch(r3, r1, dik);
-               T df_jk = base_dfdswitch(r3, r1, djk);
-
-               T dFdR01 = ( fs_ik + fs_jk ) * df_ij * e[id_cluster]; 
-               T dFdR02 = ( fs_ij + fs_jk ) * df_ik * e[id_cluster];
-               T dFdR12 = ( fs_ij + fs_ik ) * df_jk * e[id_cluster];
-
-
-               // update atom0
-               dfdxyz[3 * at0    ][id_cluster] += ( dFdR01 * dRdxtmp[0][0] + dFdR02 * dRdxtmp[1][0]) ;
-               dfdxyz[3 * at0 + 1][id_cluster] += ( dFdR01 * dRdxtmp[0][1] + dFdR02 * dRdxtmp[1][1]) ;
-               dfdxyz[3 * at0 + 2][id_cluster] += ( dFdR01 * dRdxtmp[0][2] + dFdR02 * dRdxtmp[1][2]) ;                                                  
-
-               //update atom1
-               dfdxyz[3 * at1    ][id_cluster] += (-dFdR01 * dRdxtmp[0][0] + dFdR12 * dRdxtmp[2][0]) ;
-               dfdxyz[3 * at1 + 1][id_cluster] += (-dFdR01 * dRdxtmp[0][1] + dFdR12 * dRdxtmp[2][1]) ;
-               dfdxyz[3 * at1 + 2][id_cluster] += (-dFdR01 * dRdxtmp[0][2] + dFdR12 * dRdxtmp[2][2]) ;                   
-
-
-               //update atom2
-               dfdxyz[3 * at2    ][id_cluster] += (-dFdR02 * dRdxtmp[1][0] - dFdR12 * dRdxtmp[2][0]) ;
-               dfdxyz[3 * at2 + 1][id_cluster] += (-dFdR02 * dRdxtmp[1][1] - dFdR12 * dRdxtmp[2][1]) ;
-               dfdxyz[3 * at2 + 2][id_cluster] += (-dFdR02 * dRdxtmp[1][2] - dFdR12 * dRdxtmp[2][2]) ; 
+          for(idx_t at = 0; at < this->NATOM; at++){
+               if ( at == at0 ) {  // if the atom is involved with switching factor calculation, scale the dfdx and then add the gradient from   
+#ifdef _OPENMP
+#pragma omp parallel for simd shared(e, at0, at1, at2, dfdx, dsw, s)
+#endif          
+                    for(size_t i=0; i < N; i++){
+                         dfdx[3*at    ][i] *= s[i]; 
+                         dfdx[3*at + 1][i] *= s[i]; 
+                         dfdx[3*at + 2][i] *= s[i]; 
+                         dfdx[3*at    ][i] += e[i] * dsw[0][i]; 
+                         dfdx[3*at + 1][i] += e[i] * dsw[1][i]; 
+                         dfdx[3*at + 2][i] += e[i] * dsw[2][i];
+                    }
+               } else if( at == at1 ) { 
+#ifdef _OPENMP
+#pragma omp parallel for simd shared(e, at0, at1, at2, dfdx, dsw, s)
+#endif          
+                    for(size_t i=0; i < N; i++){
+                         dfdx[3*at    ][i] *= s[i]; 
+                         dfdx[3*at + 1][i] *= s[i]; 
+                         dfdx[3*at + 2][i] *= s[i]; 
+                         dfdx[3*at    ][i] += e[i] * dsw[3][i]; 
+                         dfdx[3*at + 1][i] += e[i] * dsw[4][i]; 
+                         dfdx[3*at + 2][i] += e[i] * dsw[5][i];
+                    }
+               } else if( at == at2 ) { 
+#ifdef _OPENMP
+#pragma omp parallel for simd shared(e, at0, at1, at2, dfdx, dsw, s)
+#endif          
+                    for(size_t i=0; i < N; i++){
+                         dfdx[3*at    ][i] *= s[i]; 
+                         dfdx[3*at + 1][i] *= s[i]; 
+                         dfdx[3*at + 2][i] *= s[i]; 
+                         dfdx[3*at    ][i] += e[i] * dsw[6][i]; 
+                         dfdx[3*at + 1][i] += e[i] * dsw[7][i]; 
+                         dfdx[3*at + 2][i] += e[i] * dsw[8][i];
+                    }                    
+               } else { // if the atom is not involved with switching factor calculation, scale the dfdx with switching factor
+#ifdef _OPENMP
+#pragma omp parallel for simd shared(e, at0, at1, at2, dfdx, dsw, s)
+#endif          
+                    for(size_t i=0; i < N; i++){
+                         dfdx[3*at    ][i] *= s[i]; 
+                         dfdx[3*at + 1][i] *= s[i]; 
+                         dfdx[3*at + 2][i] *= s[i];             
+                    }
+               }
           }
     }
     return;
@@ -596,6 +717,7 @@ Gfunction_t<T>::Gfunction_t() : atom_Type_ID_t<T>(){
      xyz = nullptr;
      dfdxyz = nullptr;
      switch_factor = nullptr;
+     dswitchdx = nullptr;
 };
 
 template <typename T>
@@ -610,6 +732,7 @@ Gfunction_t<T>::~Gfunction_t(){
      };
 
      if(switch_factor != nullptr) delete[] switch_factor;
+     clearMemo<T>(dswitchdx);
      clearMemo<T>(dfdxyz);
      clearMemo<T>(xyz);
 };
@@ -1011,7 +1134,7 @@ for(size_t id_cluster = batchstart; id_cluster< batchlimit; id_cluster++)
                                         for (size_t ip = 0; ip < np; ip ++){
 
                                              // In forward, this update G0;
-                                             /// In backward, this update dfdD[atom0 VS atom1]
+                                             // In backward, this update dfdD[atom0 VS atom1]
 
 
                                              // print the position in G at which the result is saved to 
@@ -1073,7 +1196,7 @@ for(size_t id_cluster = batchstart; id_cluster< batchlimit; id_cluster++)
 
                                              // T dfdRtmp = ( dfdG0[offset_by_rel + ip ][id_cluster] +  dfdG1[offset_by_rel + ip ][id_cluster] ) * dGdRtmp ;
 
-                                             T dfdRtmp = ( dfdG0[offset_by_rel + ip ][id_cluster] ) * dGdRtmp ;
+                                             T dfdRtmp = ( dfdG0[offset_by_rel + ip ][id_cluster] + dfdG1[offset_by_rel + ip ][id_cluster] ) * dGdRtmp ;
 
                                              // update atom0
                                              dfdxyz[3 * *atom0_id    ][id_cluster] += dfdRtmp * dtmp[0];
@@ -1267,7 +1390,7 @@ template class Gfunction_t<double>;
 
 
 
-int main1123(int argc, char *argv[]){
+int main3l24k(int argc, char *argv[]){
 
      Gfunction_t<double> G;
      const char* xyzfile1 = "test1.xyz";
@@ -1276,7 +1399,7 @@ int main1123(int argc, char *argv[]){
 
      G.load_xyzfile(xyzfile1);
      G.load_paramfile("Gfunc_params_2Bv14_tuned.dat");
-     G.load_seq(tmp);
+     G.load_seq_2h2o_default();
      G.load_scale_2h2o_default();
 
      G.make_G();
@@ -1292,7 +1415,7 @@ int main1123(int argc, char *argv[]){
      for(int j=0; j < 2; j++){
           for(int i = 0; i < 1; i++){
                double ** grd = nullptr;
-               init_mtx_in_mem(grd, 82, 1);
+               init_mtx_in_mem(grd, 82, 2);
                // for(int j=0; j < 82; j++) {
                //      grdO[0][i] = G.G[i][0][j]*scale;
                //      ut << std::scientific << std::setprecision(18) << grdO[0][i] << " ";
@@ -1303,7 +1426,7 @@ int main1123(int argc, char *argv[]){
 
           for(int i = 0; i < 2; i++){
                double ** grd = nullptr;
-               init_mtx_in_mem(grd, 84, 1);
+               init_mtx_in_mem(grd, 84, 2);
                // for(int j=0; j < 84; j++) {
                //      grdO[0][i] = G.G[i][0][j]*scale;
                //      ut << std::scientific << std::setprecision(18) << grdO[0][i] << " ";
@@ -1322,7 +1445,7 @@ int main1123(int argc, char *argv[]){
      checkxyz = std::stoi(argv[2]);
      checkginp = std::stoi(argv[3]);
      checkpara = std::stoi(argv[4]);
-     double scale = 0.001;
+     double scale = 0.00001;
 
 
      dfdG[checkginp][checkpara][0]=1.0;
@@ -1338,15 +1461,23 @@ int main1123(int argc, char *argv[]){
      double p_old = G.G[checkginp][checkpara][0] ;
 
      double dx = G.XYZ[0][checkatom*3 + checkxyz] * scale ;
-     std::cout << G.XYZ[0][checkatom*3 + checkxyz] << std::endl;
+     // std::cout << G.XYZ[0][checkatom*3 + checkxyz] << std::endl;
      G.XYZ[0][checkatom*3 + checkxyz] += dx ;
-     std::cout << G.XYZ[0][checkatom*3 + checkxyz] << std::endl;     
+     // std::cout << G.XYZ[0][checkatom*3 + checkxyz] << std::endl;     
      G.make_G();
 
      double p_new = G.G[checkginp][checkpara][0] ;
 
      std::cout << "Gradient from test is " << std::scientific << std::setprecision(18) << (p_new - p_old) / dx  << std::endl;     
 
+
+
+     for(int i =0; i< 2; i ++){
+          for(int j=0; j < 18; j++){
+               // std::cout <<  std::setprecision(18) << G.dfdxyz[j][i] << " | " ;
+          }
+          // std::cout << std::endl;
+     }
 
 
 

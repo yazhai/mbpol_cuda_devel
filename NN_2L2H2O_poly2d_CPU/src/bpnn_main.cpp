@@ -30,7 +30,6 @@ bpnn_t<T>::bpnn_t(string tag): Gfunction_t<T>(), allNN_t<T>(), energy_(nullptr){
           this->load_seq_2h2o_default();
           this->load_paramfile_2h2o_default();
           this->load_scale_2h2o_default();
-
           this->init_allNNs(2, INFILE_2B, CHECKCHAR2);
           
           cerr << " === Model initialized successfully ! === " << endl;
@@ -115,11 +114,11 @@ T MBbpnnPlugin::get_eng_2h2o(size_t nd, std::vector<T>xyz1, std::vector<T>xyz2, 
 
           size_t tp_idx = bpnn_2h2o.TYPE_EACHATOM[at];
 
-               bpnn_2h2o.nets[tp_idx].predict(*bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER, tmp );
+          bpnn_2h2o.nets[tp_idx].predict(*bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER, tmp );
 
-               for (int i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
-                    bpnn_2h2o.energy_[i] += tmp[i];
-               }
+          for (int i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
+               bpnn_2h2o.energy_[i] += tmp[i];
+          }
           
      }
 
@@ -174,7 +173,7 @@ T MBbpnnPlugin::get_eng_2h2o(size_t nd, std::vector<T>xyz1, std::vector<T>xyz2, 
      bpnn_2h2o.load_xyz_and_type_from_vectors(nd, allxyz, atoms1) ; 
 
      bpnn_2h2o.make_G();
-     bpnn_2h2o.cal_switch(2);
+     bpnn_2h2o.cal_switch_with_grad(2);
 
 
 
@@ -182,24 +181,21 @@ T MBbpnnPlugin::get_eng_2h2o(size_t nd, std::vector<T>xyz1, std::vector<T>xyz2, 
 
      bpnn_2h2o.energy_ = new T [bpnn_2h2o.NCLUSTER]();
      T * tmp = new T [bpnn_2h2o.NCLUSTER]() ;
+
      T * tmp_grd = nullptr;
      T** tmp_grd2= nullptr;
 
      std::vector<T**> dfdG;
 
-
      for(idx_t at = 0; at < bpnn_2h2o.NATOM; at ++){
 
           size_t tp_idx = bpnn_2h2o.TYPE_EACHATOM[at];
-          
-          bpnn_2h2o.nets[tp_idx].predict(*bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER, tmp );
+
+          bpnn_2h2o.nets[tp_idx].predict_and_getgrad(*bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER, tmp, tmp_grd );
 
           for (int i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
                bpnn_2h2o.energy_[i] += tmp[i];
           }
-
-          // backwards on NN, with the switching factor included
-          bpnn_2h2o.nets[tp_idx].backward(bpnn_2h2o.switch_factor, bpnn_2h2o.NCLUSTER, 1, tmp_grd );
 
           init_mtx_in_mem(tmp_grd2, bpnn_2h2o.G_param_max_size[tp_idx], nd) ;
           copy(tmp_grd, tmp_grd + nd * bpnn_2h2o.G_param_max_size[tp_idx],tmp_grd2[0] );
@@ -214,15 +210,6 @@ T MBbpnnPlugin::get_eng_2h2o(size_t nd, std::vector<T>xyz1, std::vector<T>xyz2, 
      delete [] tmp; 
      if (tmp_grd != nullptr) delete[] tmp_grd;
 
-     T energy = 0;
-
-     for (size_t i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
-          energy +=  bpnn_2h2o.energy_[i] * bpnn_2h2o.switch_factor[i];
-          // cout << " Dimer " << i << " 's energy is " << bpnn_2h2o.energy_[i]*  bpnn_2h2o.switch_factor[i] * (EUNIT) << endl;
-     }
-         
-     // cout << " Total energy is "<< energy << endl;        
-
      // save partially gradient       
      init_mtx_in_mem(bpnn_2h2o.dfdxyz , (size_t)(bpnn_2h2o.NATOM *3) , bpnn_2h2o.NCLUSTER);
      bpnn_2h2o.make_grd(dfdG);
@@ -232,13 +219,14 @@ T MBbpnnPlugin::get_eng_2h2o(size_t nd, std::vector<T>xyz1, std::vector<T>xyz2, 
      }
 
      // another part of gradient comes from switching function
-     bpnn_2h2o.get_dfdx_from_switch(2, bpnn_2h2o.energy_);
+     bpnn_2h2o.scale_dfdx_with_switch(2, bpnn_2h2o.energy_);
 
-
-     for(size_t i =0; i< bpnn_2h2o.NATOM*3; i++){
-          for(size_t j=0; j < bpnn_2h2o.NCLUSTER; j++){
-               bpnn_2h2o.dfdxyz[i][j] *= (EUNIT) ;
-          }
+     for(size_t j=0; j < bpnn_2h2o.NCLUSTER; j++){
+          for(size_t i =0; i< bpnn_2h2o.NATOM*3; i++){
+                    cout << bpnn_2h2o.dfdxyz[i][j] * (EUNIT) << "   ";
+                    // bpnn_2h2o.dfdxyz[i][j] *= (EUNIT) ; 
+               }
+          cout << endl;
      }
 
 
@@ -255,6 +243,16 @@ T MBbpnnPlugin::get_eng_2h2o(size_t nd, std::vector<T>xyz1, std::vector<T>xyz2, 
                grad2.push_back(*grd++) ;
           }             
      }
+
+
+     T energy = 0;
+
+     for (size_t i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
+          energy +=  bpnn_2h2o.energy_[i] * bpnn_2h2o.switch_factor[i];
+          // cout << " Dimer " << i << " 's energy is " << bpnn_2h2o.energy_[i]*  bpnn_2h2o.switch_factor[i] * (EUNIT) << endl;
+     }
+         
+
 
      return energy*(EUNIT);
 }
@@ -274,47 +272,36 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
      bpnn_2h2o.init_allNNs(2, INFILE_2B, CHECKCHAR2);
 
      bpnn_2h2o.make_G();
-     bpnn_2h2o.cal_switch(2);
+     if (ifgrad) {   
+          bpnn_2h2o.cal_switch_with_grad(2);
+     } else {
+          bpnn_2h2o.cal_switch(2);
+     }
 
      if (bpnn_2h2o.energy_ != nullptr) delete[] bpnn_2h2o.energy_ ;
 
      bpnn_2h2o.energy_ = new T [bpnn_2h2o.NCLUSTER]();
-
-
      T * tmp = new T [bpnn_2h2o.NCLUSTER]() ;
-     for(idx_t at = 0; at < bpnn_2h2o.NATOM; at ++){
-          size_t tp_idx = bpnn_2h2o.TYPE_EACHATOM[at];
-          bpnn_2h2o.nets[tp_idx].predict(*bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER, tmp );
 
-          for (int i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
-               bpnn_2h2o.energy_[i] += tmp[i];
+     if(!ifgrad){
+          for(idx_t at = 0; at < bpnn_2h2o.NATOM; at ++){
+               size_t tp_idx = bpnn_2h2o.TYPE_EACHATOM[at];
+               bpnn_2h2o.nets[tp_idx].predict(*bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER, tmp );
+
+               for (int i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
+                    bpnn_2h2o.energy_[i] += tmp[i];
+               }
           }
-     }
-     delete [] tmp; 
 
-     T energy = 0;
-     for (size_t i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
-          energy +=  bpnn_2h2o.energy_[i] * bpnn_2h2o.switch_factor[i];
-          // cout << " Dimer " << i << " 's energy is " << bpnn_2h2o.energy_[i]* bpnn_2h2o.switch_factor[i] * (EUNIT) << endl;
-     }
-
-
-
-
-     if(ifgrad){
+     } else {
 
           T * tmp_grd = nullptr;
           T** tmp_grd2= nullptr;
-
           std::vector<T**> dfdG;
 
-
           for(idx_t at = 0; at < bpnn_2h2o.NATOM; at ++){
-
                size_t tp_idx = bpnn_2h2o.TYPE_EACHATOM[at];
-               
-               // backwards on NN, with the switching factor included
-               bpnn_2h2o.nets[tp_idx].backward(bpnn_2h2o.switch_factor, bpnn_2h2o.NCLUSTER, 1, tmp_grd );
+               bpnn_2h2o.nets[tp_idx].predict_and_getgrad(*bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER, tmp, tmp_grd );
 
                init_mtx_in_mem(tmp_grd2, bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER) ;
                copy(tmp_grd, tmp_grd + bpnn_2h2o.NCLUSTER * bpnn_2h2o.G_param_max_size[tp_idx],tmp_grd2[0] );
@@ -325,9 +312,11 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
                }
                dfdG.push_back(tmp_grd2);
                // tmp_grd
-          }
 
-          if (tmp_grd != nullptr) delete[] tmp_grd;   
+               for (int i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
+                    bpnn_2h2o.energy_[i] += tmp[i];
+               }
+          }
 
           // save partially gradient       
           init_mtx_in_mem(bpnn_2h2o.dfdxyz , (size_t)(bpnn_2h2o.NATOM *3) , bpnn_2h2o.NCLUSTER);
@@ -338,17 +327,27 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
           }
 
           // another part of gradient comes from switching function
-          bpnn_2h2o.get_dfdx_from_switch(2, bpnn_2h2o.energy_);
+          bpnn_2h2o.scale_dfdx_with_switch(2, bpnn_2h2o.energy_);
 
-
-          for(size_t i =0; i< bpnn_2h2o.NATOM*3; i++){
-               for(size_t j=0; j < bpnn_2h2o.NCLUSTER; j++){
-                    bpnn_2h2o.dfdxyz[i][j] *= (EUNIT) ;
-               }
+          for(size_t j=0; j < bpnn_2h2o.NCLUSTER; j++){
+               for(size_t i =0; i< bpnn_2h2o.NATOM*3; i++){
+                         cout << bpnn_2h2o.dfdxyz[i][j] * (EUNIT) << "   ";
+                         // bpnn_2h2o.dfdxyz[i][j] *= (EUNIT) ; 
+                    }
+               cout << endl;
           }
 
           cout << " gradient is done, but not returned " << endl;
      }
+                   
+     delete [] tmp; 
+
+     T energy = 0;
+     for (size_t i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
+          energy +=  bpnn_2h2o.energy_[i] * bpnn_2h2o.switch_factor[i];
+          cout << " Dimer " << i << " 's energy is " << bpnn_2h2o.energy_[i]* bpnn_2h2o.switch_factor[i] * (EUNIT) << endl;
+     }
+
      return energy*(EUNIT);
 }
 
@@ -367,7 +366,11 @@ T MBbpnnPlugin::get_eng_3h2o(const char* xyzfile, bool ifgrad ){
      bpnn_3h2o.init_allNNs(2, INFILE_3B, CHECKCHAR2);
 
      bpnn_3h2o.make_G();
-     bpnn_3h2o.cal_switch(3);
+     if (ifgrad) {   
+          bpnn_3h2o.cal_switch_with_grad(3);
+     } else {
+          bpnn_3h2o.cal_switch(3);
+     }
 
      if (bpnn_3h2o.energy_ != nullptr) delete[] bpnn_3h2o.energy_ ;
 
@@ -375,29 +378,18 @@ T MBbpnnPlugin::get_eng_3h2o(const char* xyzfile, bool ifgrad ){
 
 
      T * tmp = new T [bpnn_3h2o.NCLUSTER]() ;
-     for(idx_t at = 0; at < bpnn_3h2o.NATOM; at ++){
-          size_t tp_idx = bpnn_3h2o.TYPE_EACHATOM[at];
-          bpnn_3h2o.nets[tp_idx].predict(*bpnn_3h2o.G[at], bpnn_3h2o.G_param_max_size[tp_idx], bpnn_3h2o.NCLUSTER, tmp );
 
-          for (int i = 0; i < bpnn_3h2o.NCLUSTER; i++ ){
-               bpnn_3h2o.energy_[i] += tmp[i];
+     if(!ifgrad){
+          for(idx_t at = 0; at < bpnn_3h2o.NATOM; at ++){
+               size_t tp_idx = bpnn_3h2o.TYPE_EACHATOM[at];
+               bpnn_3h2o.nets[tp_idx].predict(*bpnn_3h2o.G[at], bpnn_3h2o.G_param_max_size[tp_idx], bpnn_3h2o.NCLUSTER, tmp );
+
+               for (int i = 0; i < bpnn_3h2o.NCLUSTER; i++ ){
+                    bpnn_3h2o.energy_[i] += tmp[i];
+               }
           }
-     }
-     delete [] tmp; 
 
-     T energy = 0;
-     for (size_t i = 0; i < bpnn_3h2o.NCLUSTER; i++ ){
-          energy +=  bpnn_3h2o.energy_[i] * bpnn_3h2o.switch_factor[i];
-          // cout << " Dimer " << i << " 's energy is " << bpnn_3h2o.energy_[i]* bpnn_3h2o.switch_factor[i] * (EUNIT) << endl;
-
-          // cout << " Dimer " << i << " 's energy is " << bpnn_3h2o.energy_[i]* bpnn_3h2o.switch_factor[i] *1 << endl;
-
-     }
-
-
-
-
-     if(ifgrad){
+     } else {
 
           T * tmp_grd = nullptr;
           T** tmp_grd2= nullptr;
@@ -409,8 +401,7 @@ T MBbpnnPlugin::get_eng_3h2o(const char* xyzfile, bool ifgrad ){
 
                size_t tp_idx = bpnn_3h2o.TYPE_EACHATOM[at];
                
-               // backwards on NN, with the switching factor included
-               bpnn_3h2o.nets[tp_idx].backward(bpnn_3h2o.switch_factor, bpnn_3h2o.NCLUSTER, 1, tmp_grd );
+               bpnn_3h2o.nets[tp_idx].predict_and_getgrad(*bpnn_3h2o.G[at], bpnn_3h2o.G_param_max_size[tp_idx], bpnn_3h2o.NCLUSTER, tmp, tmp_grd);
 
                init_mtx_in_mem(tmp_grd2, bpnn_3h2o.G_param_max_size[tp_idx], bpnn_3h2o.NCLUSTER) ;
                copy(tmp_grd, tmp_grd + bpnn_3h2o.NCLUSTER * bpnn_3h2o.G_param_max_size[tp_idx],tmp_grd2[0] );
@@ -421,9 +412,14 @@ T MBbpnnPlugin::get_eng_3h2o(const char* xyzfile, bool ifgrad ){
                }
                dfdG.push_back(tmp_grd2);
                // tmp_grd
+
+               for (int i = 0; i < bpnn_3h2o.NCLUSTER; i++ ){
+                    bpnn_3h2o.energy_[i] += tmp[i];
+               }               
           }
 
-          if (tmp_grd != nullptr) delete[] tmp_grd;   
+
+          
 
           // save partially gradient       
           init_mtx_in_mem(bpnn_3h2o.dfdxyz , (size_t)(bpnn_3h2o.NATOM *3) , bpnn_3h2o.NCLUSTER);
@@ -434,17 +430,36 @@ T MBbpnnPlugin::get_eng_3h2o(const char* xyzfile, bool ifgrad ){
           }
 
           // another part of gradient comes from switching function
-          bpnn_3h2o.get_dfdx_from_switch(2, bpnn_3h2o.energy_);
+          bpnn_3h2o.scale_dfdx_with_switch(3, bpnn_3h2o.energy_);
 
-
+          for(size_t j=0; j < bpnn_3h2o.NCLUSTER; j++){
           for(size_t i =0; i< bpnn_3h2o.NATOM*3; i++){
-               for(size_t j=0; j < bpnn_3h2o.NCLUSTER; j++){
-                    bpnn_3h2o.dfdxyz[i][j] *= (EUNIT) ;
+               
+                    cout << bpnn_3h2o.dfdxyz[i][j] * 1 << "   " ;
                }
+               cout << endl;
           }
 
           cout << " gradient is done, but not returned " << endl;
+
+
      }
+
+     delete [] tmp; 
+
+     T energy = 0;
+     for (size_t i = 0; i < bpnn_3h2o.NCLUSTER; i++ ){
+          energy +=  bpnn_3h2o.energy_[i] * bpnn_3h2o.switch_factor[i];
+          // cout << " Dimer " << i << " 's energy is " << bpnn_3h2o.energy_[i]* bpnn_3h2o.switch_factor[i] * (EUNIT) << endl;
+
+          cout << " Dimer " << i << " 's energy is " << bpnn_3h2o.energy_[i]* bpnn_3h2o.switch_factor[i] *1 << endl;
+
+     }
+
+
+
+
+
      return energy*(EUNIT);
 }
 
@@ -673,7 +688,7 @@ int main(int argc, const char* argv[]){
 
      if(argc >2 )  {
           bool ifgrad = false ;
-          if(argc == 4 ) {
+          if(argc > 3 ) {
                if (atoi(argv[3]) == 1) ifgrad = true;
           }
 
@@ -682,11 +697,6 @@ int main(int argc, const char* argv[]){
           } else if ( atoi(argv[1]) == 3 ) {
                get_eng_3h2o<double>(argv[2], ifgrad);
           }
-
-
-
-
-
      }
 
      return 0;

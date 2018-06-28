@@ -112,10 +112,14 @@ void load_resv_scales(std::string tag); // saving the scaling factors to the res
 
 
 // the following functions offers a switch_factor that is applied to the energy from NN (works as an energy scale factor)
-T base_fswitch(T ri, T rf, T r);
-T base_dfdswitch(T ri, T rf, T r);  
+T base_fswitch(T ri, T rf, T r); 
 void fswitch_2b(T ri, T rf, idx_t at1, idx_t at2);
 void fswitch_3b(T ri, T rf, idx_t at1, idx_t at2, idx_t at3);
+
+T base_dswitch(T ri, T rf, T r);
+void fswitch_with_grad_2b(T ri, T rf, idx_t at1, idx_t at2);
+void fswitch_with_grad_3b(T ri, T rf, idx_t at1, idx_t at2, idx_t at3);
+
 
 public:
 
@@ -123,7 +127,7 @@ public:
 T** xyz;                    //xyz data of atoms used for calculation; duplicated from XYZ in atom_Type_ID class ;
 T** dfdxyz;                 //function gradient on xyz of atoms, the same size of xyz
 T*  switch_factor;            // switch function factor applies to energy from NN
-T*  dfdswitch;                // gradient of switch function
+T**  dswitchdx;                // gradient of switch function
 
 Gparams_t<T> gparams;                 // G-fn paramter class
 
@@ -160,8 +164,9 @@ void make_grd(std::vector<T**> dfdG); // get gradient by current model informati
 
 void cal_switch(int flag, idx_t at1 =0, idx_t at2=3, idx_t at3=6);
 
-void get_dfdx_from_switch(int flag, T* e, idx_t at1 =0, idx_t at2=3, idx_t at3=6);
+void cal_switch_with_grad(int flag, idx_t at1 =0, idx_t at2=3, idx_t at3=6);
 
+void scale_dfdx_with_switch(int flag, T* e, idx_t at1 =0, idx_t at2=3, idx_t at3=6);
 };
 
 

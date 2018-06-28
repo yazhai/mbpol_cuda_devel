@@ -28,10 +28,6 @@
 #include <omp.h>
 #endif 
 
-
-#define EUNIT (6.0)/(.0433634) //energy conversion factor 
-//#define EUNIT 1
-
 using namespace std;
 using namespace MBbpnnPlugin;
 
@@ -144,26 +140,27 @@ void Functional_t<T>::fullyConnectedForward(const Layer_t<T> & layer,
 
      //Conduct Matrix Multiplication, use N as inner-most loops, because it
      //will be the biggest!
-     int k=0;
+     T** wt = layer.weights;
      for(int i=0;i<output;i++){
           for(int j=0;j<input;j++){
                #ifdef _OPENMP 
-               #pragma omp parallel for simd shared(dstData,srcData,layer)
+               #pragma omp parallel for simd shared(dstData,srcData,wt, N)
                #endif 
-               for (k=0;k<N;k++){
-                    dstData[i][k] += layer.weights[i][j]*srcData[N*j+k];
+               for (int k=0;k<N;k++){
+                    dstData[i][k] += wt[i][j]*srcData[N*j+k];
                }
           }
      }
      
      //Conduct Bias Addition, se N as inn-ermost loop, beacuse it will be
      //the biggest!
+     T* bs = layer.bias;
      for(int i=0;i< output;i++){
           #ifdef _OPENMP
-          #pragma omp parallel for simd shared(dstData,layer)
+          #pragma omp parallel for simd shared(dstData,bs, N)
           #endif 
           for(int j=0;j<N;j++){
-               dstData[i][j] += layer.bias[i];
+               dstData[i][j] += bs[i];
           }
      }
 
@@ -171,7 +168,7 @@ void Functional_t<T>::fullyConnectedForward(const Layer_t<T> & layer,
 
 //non-cblas implementaiton of forward propogation activation function(TANH)
 template <typename T>
-void Functional_t<T>::activationForward_TANH(const Layer_t<T> & layer,  const size_t N , T* srcData, T** & dstData){     
+void Functional_t<T>::activationForward_TANH(Layer_t<T> & layer,  const size_t N , T* srcData, T** & dstData, bool ifgrd){     
 
      size_t output = layer.outputs;
 
@@ -181,18 +178,31 @@ void Functional_t<T>::activationForward_TANH(const Layer_t<T> & layer,  const si
      }
      init_mtx_in_mem<T>(dstData,output,N);
      
-     //complete faster TANH computation
-     T x;
-     for(int i=0;i<output;i++){
-          #ifdef _OPENMP
-          #pragma omp parallel for simd shared(srcData,dstData,x)
-          #endif 
-          for(int j=0;j<N;j++){
-               x = srcData[i*N + j];
-               x = exp(2*x);
-               x = (x-1)/(x+1);
-               dstData[i][j] = x;
-          }     
+     if (ifgrd) {
+          init_mtx_in_mem<T>(layer.weights, output, N);
+          T** grd_tmp = layer.weights;
+          //complete faster TANH computation
+          for(int i=0;i<output;i++){
+               #ifdef _OPENMP
+               #pragma omp parallel for simd shared(srcData,dstData, grd_tmp, N)
+               #endif 
+               for(int j=0;j<N;j++){
+                    T x = exp( srcData[i*N + j] *2 );
+                    dstData[i][j]  = (x-1)/(x+1);
+                    grd_tmp[i][j] = (4*x) / ( (x+1) * (x+1) );
+               }     
+          }
+     } else{
+          //complete faster TANH computation
+          for(int i=0;i<output;i++){
+               #ifdef _OPENMP
+               #pragma omp parallel for simd shared(srcData,dstData, N)
+               #endif 
+               for(int j=0;j<N;j++){
+                    T x = exp( srcData[i*N + j] *2 );
+                    dstData[i][j]  = (x-1)/(x+1);
+               }     
+          }          
      }
 }     
 
@@ -215,14 +225,14 @@ void Functional_t<T>::fullyConnectedBackward(const Layer_t<T> & layer,
 
      //Conduct Matrix Multiplication, use N as inner-most loops, because it
      //will be the biggest!
-     int k=0;
+     T** wt = layer.weights;
      for(int j=0;j< output;j++){
           for(int i=0;i<input;i++){
                #ifdef _OPENMP
-               #pragma omp parallel for simd shared(dstData,srcData,layer)
+               #pragma omp parallel for simd shared(dstData,srcData,wt, N)
                #endif 
-               for (k=0;k<N;k++){
-                    dstData[j][k] += layer.weights[i][j]*srcData[N*i+k];
+               for (int k=0;k<N;k++){
+                    dstData[j][k] += wt[i][j]*srcData[N*i+k];
                }
           }
      }
@@ -242,16 +252,13 @@ void Functional_t<T>::activationBackward_TANH(const Layer_t<T> & layer,  const s
      init_mtx_in_mem<T>(dstData,output,N);
      
      //complete faster TANH computation
-     T x;
+     T** wt = layer.weights;
      for(int i=0;i<output;i++){
           #ifdef _OPENMP
-          #pragma omp parallel for simd shared(srcData,dstData,x)
+          #pragma omp parallel for simd shared(srcData,dstData,N, wt)
           #endif 
           for(int j=0;j<N;j++){
-               x = srcData[i*N + j];
-               x = exp(2*x);
-               x = (4*x) / (x+1) / (x+1);
-               dstData[i][j] = x;
+               dstData[i][j] = srcData[i*N + j] * wt[i][j];
           }     
      }
 }  
@@ -447,7 +454,7 @@ Layer_t<T>* NN_t<T>::get_layer_by_seq(int _n){
 //Move through network and make prediction based on all layers.     
 template <typename T>
 void NN_t<T>::predict(T* _inputData, size_t input, size_t N, T* & _outputData){
-          if (root != NULL) {
+     if (root != NULL) {
    
           //two pointers used to store and recieve data(switch between them)
           T** srcDataPtr = nullptr; 
@@ -489,18 +496,18 @@ void NN_t<T>::predict(T* _inputData, size_t input, size_t N, T* & _outputData){
 
           } 
           
-          while(  (curr=curr->next) != NULL);
+          while(  (curr->next!= NULL) && (curr = curr->next) );
                
           //create space for output Data
-               if(_outputData!=NULL){
-                    delete[] _outputData;
-               }
-               _outputData = new T[N];
-     
-               //copy from srcDataPtr to outputData          
-               copy(*srcDataPtr,*srcDataPtr + N,_outputData);
-                         
-               //Release Resources
+          if(_outputData!=NULL){
+               delete[] _outputData;
+          }
+          _outputData = new T[N*curr->outputs];
+
+          //copy from srcDataPtr to outputData          
+          copy(*srcDataPtr,*srcDataPtr + N*curr->outputs,_outputData);
+                    
+          //Release Resources
           clearMemo<T>(srcDataPtr);
           clearMemo<T>(dstDataPtr);
           srcDataPtr = nullptr;
@@ -509,6 +516,122 @@ void NN_t<T>::predict(T* _inputData, size_t input, size_t N, T* & _outputData){
 
      return;
 }      
+
+
+
+//Move through network and make prediction based on all layers.     
+template <typename T>
+void NN_t<T>::predict_and_getgrad(T* _inputData, size_t input, size_t N, T* & _outputData, T* & _grdData){
+     if (root != NULL) {
+   
+          //two pointers used to store and recieve data(switch between them)
+          T** srcDataPtr = nullptr; 
+          T** dstDataPtr = nullptr;
+
+          //init srcDataPtr to point to tranpose of input data
+          init_mtx_in_mem<T>(srcDataPtr, input, N);
+          copy(_inputData,_inputData+input*N,srcDataPtr[0]);
+                                                  
+          Layer_t<T>* curr = root;
+          do{
+               // cout<<curr->name<<endl;
+               //DENSE LAYER PROPOGATION
+               if ( curr-> type == Type_t::DENSE ) { 
+                    
+                    // If it is a dense layer, we perform fully_connected forward 
+                    neural_net.fullyConnectedForward((*curr), N, *srcDataPtr, dstDataPtr);
+                    //note: inside fullyConnectedForward, output is updated, and input=output for next layer use.
+
+                    switchptr(srcDataPtr, dstDataPtr);
+               } 
+               //ACTIVATION LAYER PROPOGATION
+               else if (curr -> type == Type_t::ACTIVIATION){
+                         // If it is an activiation layer, perform corresponding activiation forwards
+                         if (curr -> acttype == ActType_t::TANH){
+                              neural_net.activationForward_TANH((*curr),N, *srcDataPtr, dstDataPtr, true);
+                              switchptr(srcDataPtr, dstDataPtr);
+                         } 
+                    else if (curr->acttype == ActType_t::LINEAR) {    
+     
+                         } 
+                    else {
+                         cout <<"Unknown Activation Type!"<<endl;
+                    }
+                    } 
+               else {
+                         cout << "Unknown layer type!" <<endl;
+               }
+
+          } while(  (curr->next!= NULL) && (curr = curr->next) ) ;
+               
+          //create space for output Data
+          if(_outputData!=NULL){
+               delete[] _outputData;
+          }
+          _outputData = new T[N*curr->outputs];
+
+          //copy from srcDataPtr to outputData        
+          copy(*srcDataPtr,*srcDataPtr + N*curr->outputs,_outputData);
+
+
+          // do the backwards immediately 
+          // init srcDataPtr to 1
+          std::fill_n(*srcDataPtr, N*curr->outputs, 1.0);
+
+          while( true ){
+               //DENSE LAYER PROPOGATION
+               if ( curr-> type == Type_t::DENSE ) { 
+                    
+                    // If it is a dense layer, we perform fully_connected backward 
+                    neural_net.fullyConnectedBackward((*curr), N, *srcDataPtr, dstDataPtr);
+                    //note: inside fullyConnectedForward, output is updated, and input=output for next layer use.
+
+                    switchptr(srcDataPtr, dstDataPtr);
+               } 
+               //ACTIVATION LAYER PROPOGATION
+               else if (curr -> type == Type_t::ACTIVIATION){
+                    // If it is an activiation layer, perform corresponding activiation forwards
+                    if (curr -> acttype == ActType_t::TANH){
+                         neural_net.activationBackward_TANH((*curr),N, *srcDataPtr, dstDataPtr);
+                         switchptr(srcDataPtr, dstDataPtr);
+                    } 
+                    else if (curr->acttype == ActType_t::LINEAR) {    
+     
+                         } 
+                    else {
+                         cout <<"Unknown Activation Type!"<<endl;
+                    }
+               } 
+               else {
+                         cout << "Unknown layer type!" <<endl;
+               };
+
+               if (curr->prev != NULL ) {
+                    curr = curr->prev;
+               } else{
+                    break;
+               };
+
+          };
+
+          //create space for grd Data
+          if( _grdData!=NULL){
+               delete[] _grdData;
+          }
+          _grdData = new T[curr->inputs * N];
+
+          //copy from srcDataPtr to outputData
+          copy(*srcDataPtr,*srcDataPtr + curr->inputs * N, _grdData);
+
+          //Release Resources
+          clearMemo<T>(srcDataPtr);
+          clearMemo<T>(dstDataPtr);
+          srcDataPtr = nullptr;
+          dstDataPtr = nullptr;  
+     }
+
+     return;
+}
 
 
 
