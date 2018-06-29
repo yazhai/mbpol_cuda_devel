@@ -23,6 +23,7 @@
 #include <string>
 
 #include "Gfunction_v2.h"
+#include "bpnn_main.h"
 #include "H_2H2O_max"
 #include "O_2H2O_max"
 
@@ -766,13 +767,13 @@ void Gfunction_t<T>::load_seq(const char* _seqfile){
 
 template <typename T>
 void Gfunction_t<T>::load_paramfile_2h2o_default(){
-     gparams.read_param_from_file("Gfunc_params_2Bv14_tuned.dat");
+     gparams.read_param_from_file(paramFile);
 };
 
 
 template <typename T>
 void Gfunction_t<T>::load_paramfile_3h2o_default(){
-     gparams.read_param_from_file("Gfunc_params_3Bv16.dat");
+     gparams.read_param_from_file(paramFile);
 };
 
 

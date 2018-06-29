@@ -2,13 +2,11 @@
 
 #include "bpnn_main.h"
 #include <iomanip>
+#include <getopt.h>
+#include <string.h>
 
 using namespace std;
 using namespace MBbpnnPlugin;
-
-
-
-
 
 
 template<typename T>
@@ -30,7 +28,7 @@ bpnn_t<T>::bpnn_t(string tag): Gfunction_t<T>(), allNN_t<T>(), energy_(nullptr){
           this->load_seq_2h2o_default();
           this->load_paramfile_2h2o_default();
           this->load_scale_2h2o_default();
-          this->init_allNNs(2, INFILE_2B, CHECKCHAR2);
+          this->init_allNNs(2, nnFile, CHECKCHAR2);
           
           cerr << " === Model initialized successfully ! === " << endl;
      } else if (tag == "3h2o_default") {
@@ -50,7 +48,7 @@ bpnn_t<T>::bpnn_t(string tag): Gfunction_t<T>(), allNN_t<T>(), energy_(nullptr){
           this->load_paramfile_3h2o_default();
           this->load_scale_3h2o_default();
 
-          this->init_allNNs(2, INFILE_3B, CHECKCHAR2);
+          this->init_allNNs(2, nnFile, CHECKCHAR2);
           
           cerr << " === Model initialized successfully ! === " << endl;
 
@@ -269,7 +267,7 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
      bpnn_2h2o.load_seq_2h2o_default();
      bpnn_2h2o.load_paramfile_2h2o_default();
      bpnn_2h2o.load_scale_2h2o_default();
-     bpnn_2h2o.init_allNNs(2, INFILE_2B, CHECKCHAR2);
+     bpnn_2h2o.init_allNNs(2, nnFile, CHECKCHAR2);
 
      bpnn_2h2o.make_G();
      if (ifgrad) {   
@@ -363,7 +361,7 @@ T MBbpnnPlugin::get_eng_3h2o(const char* xyzfile, bool ifgrad ){
      bpnn_3h2o.load_seq_3h2o_default();
      bpnn_3h2o.load_paramfile_3h2o_default();
      bpnn_3h2o.load_scale_3h2o_default();
-     bpnn_3h2o.init_allNNs(2, INFILE_3B, CHECKCHAR2);
+     bpnn_3h2o.init_allNNs(2, nnFile, CHECKCHAR2);
 
      bpnn_3h2o.make_G();
      if (ifgrad) {   
@@ -682,22 +680,197 @@ int main_bak(int argc, const char* argv[]){
      return 0;
 }
 
-int main(int argc, const char* argv[]){
+static const struct option input_options[] = {
+  {"input", required_argument, 0, 'i'},
+  {"body", required_argument, 0, 'b'},
+  {"gradient", required_argument, 0, 'g'},
+  {"param",  required_argument, 0, 'p'},
+  {"order",  required_argument, 0, 'o'},
+  {"scale",  required_argument, 0, 's'},
+  {"nn",    required_argument, 0, 'n'},
+  {"help", no_argument, 0, 'h'},
+  {0, 0, 0, 0}
+};
 
-     cout << " usage: THIS.EXE 2|3 in.xyz if_grad[0|1]" << endl;
 
-     if(argc >2 )  {
-          bool ifgrad = false ;
-          if(argc > 3 ) {
-               if (atoi(argv[3]) == 1) ifgrad = true;
-          }
+/*
+ * Function Name: checkFile()
+ * Function Prototype: int checkFile(char* buffer, char* optarg)
+ * Description: Copy file name onto buffer and check it can be opened or not
+ * Parameters: 
+ *  buffer - placeholder to store the string, should be big enough
+ *  optarg - char[] storing file path
+ * Side Effects: overwrite content of buffer
+ * Error Conditions: File cannot be opened 
+ * Return Value: 0 if success, otherwise -1
+ */
+int checkFile(char* buffer, char* optarg){
+  strncpy(buffer, optarg, strlen(optarg));
 
-          if ( atoi(argv[1]) == 2 ){
-               get_eng_2h2o<double>(argv[2], ifgrad);
-          } else if ( atoi(argv[1]) == 3 ) {
-               get_eng_3h2o<double>(argv[2], ifgrad);
-          }
-     }
+  FILE * fileTester = fopen (buffer,"r");
+  if( fileTester==NULL ){
+    printf(OPEN_FILE_ERROR, buffer);
+    return -1;
+  }else{
+    fclose(fileTester);
+  }
+  return 0;
+}
 
-     return 0;
+/*
+ * Function Name: checkDefaultFile()
+ * Function Prototype: int checkDefaultFile(int body, 
+ *                                        char[] paramFile, 
+ *                                        char[] orderFile,
+ *                                        char[] scaleFile, 
+ *                                        char[] nnFile)
+ * Description: fall back to default input files if not specify
+ * Parameters:
+ *  body - number of body, <2|3>
+ *  paramFile - char[] for parameter file for G function
+ *  orderFile - char[] for order file for G function
+ *  scaleFile - char[] for scale ile for G function
+ *  nnFile - char[] for parameter file for neural network
+ * Side Effects: update char[] if not empty
+ * Error Conditions: None 
+ * Return Value: None 
+ */
+void checkDefaultFile(int body, char[] paramFile, char[] orderFile, 
+                   char[] scaleFile, char[] nnFile){
+
+  if ( nnFile[0] == '\0') {
+    // use default hdf5 file, defined in ../inc/bpnn_main.h
+    if (body == 2) strncpy(nnFile, INFILE_2B, strlen(INFILE_2B));
+    if (body == 3) strncpy(nnFile, INFILE_3B, strlen(INFILE_3B));
+    printf("Use defualt hdf5 for neural network:%s, which should"\
+           " be found within the same folder\n", nnFile);
+  }
+
+  if( paramFile[0] == '\0'){
+    if (body == 2) strncpy(paramFile, PARAM_FILE_2B, strlen(PARAM_FILE_2B));
+    if (body == 3) strncpy(paramFile, PARAM_FILE_3B, strlen(PARAM_FILE_3B));
+    printf("Use defualt param file for G function:%s which should"\
+           " be found within the same folder\n", paramFile);
+  }
+
+  if( orderFile[0] == '\0'){
+    if (body == 2) strncpy(order, PARAM_FILE_2B, strlen(PARAM_FILE_2B));
+    if (body == 3) strncpy(order, PARAM_FILE_3B, strlen(PARAM_FILE_3B));
+    printf("Use defualt order file for G function:%s which should"\
+            " be found within the same folder\n", orderFile);
+  }
+
+  if( scaleFile[0] == '\0'){
+    if (body == 2) strncpy(scale, PARAM_FILE_2B, strlen(PARAM_FILE_2B));
+    if (body == 3) strncpy(scale, PARAM_FILE_3B, strlen(PARAM_FILE_3B));
+    printf("Use defualt scale file for G function:%s which should"\
+           " be found within the same folder\n", scaleFile);
+  }
+
+
+}
+
+char inputFile[BUFSIZ]; // moduar
+char paramFile[BUFSIZ]; // parameter file for G function
+char orderFile[BUFSIZ]; // order file for G function
+char scaleFile[BUFSIZ]; // scale file for G function
+char nnFile[BUFSIZ];    // parameter file for Neural Network
+
+int main(int argc, char* argv[]){
+  int optPlaceholder = -1;
+  int calGradient = -1;
+  int body = -1;
+  FILE * fileTester;
+
+     
+  // Parse flags
+  while(1){
+    optPlaceholder = getopt_long(argc, argv, "i:b:g:p:o:s:n:h", 
+                                 input_options, nullptr);
+
+    if (optPlaceholder == -1) break;
+
+    switch(optPlaceholder){
+      case 'i':
+        if( checkFile(inputFile, optarg) == -1) return EXIT_FAILURE;
+        printf("input file: %s\n", inputFile);
+        break;
+
+      case 'p':
+        if( checkFile(paramFile, optarg) == -1) return EXIT_FAILURE;
+        printf("param file for G function: %s\n", paramFile);
+        break;
+
+      case 'o':
+        if( checkFile(orderFile, optarg) == -1) return EXIT_FAILURE;
+        printf("order file for G function: %s\n", orderFile);
+        break;
+
+      case 'n':
+        if( checkFile(nnFile, optarg) == -1) return EXIT_FAILURE;
+        printf("parameter file for Neural Network %s\n", nnFile);
+        break;
+
+      case 'g':
+        if( strncmp(optarg, "1", 1)!=0 && strncmp(optarg, "0", 1)!=0){
+          printf("-g, --gradient <0|1>\n");
+          return EXIT_FAILURE;
+        }
+        printf("calculate gradient: %s\n",
+                strncmp(optarg, "1", 1) == 0 ? "True": "False");
+        calGradient = atoi(optarg);
+        break;
+
+      case 'b':
+        body = atoi(optarg);
+        if(body != 2 && body != 3){
+          printf("-b, --body <2|3>\n");
+          return EXIT_FAILURE;
+        }
+        break;
+        
+      case 'h':
+        printf(STR_USAGE_LONG, argv[0]);
+        return EXIT_SUCCESS;
+
+      case '?':
+        printf(STR_USAGE_SHORT, argv[0], argv[0], argv[0]);
+        return EXIT_FAILURE;
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  if(inputFile[0] == '\0'){
+    printf("Missing files, abort\n");
+    printf(STR_USAGE_SHORT, argv[0], argv[0], argv[0]);
+    return EXIT_FAILURE;
+  }
+
+  if(calGradient == -1){
+    printf("Missing -g flag, abort\n");
+    printf(STR_USAGE_SHORT, argv[0], argv[0], argv[0]);
+    return EXIT_FAILURE;
+  }
+
+  if(body == -1){
+    printf("Missing -b flag, abort\n");
+    printf(STR_USAGE_SHORT, argv[0], argv[0], argv[0]);
+    return EXIT_FAILURE;
+
+  } else {
+    useDefaultFile(body, paramFile, orderFile, scaleFile, nnFile);
+
+  }
+
+
+  // Fire energy calculation
+  if(body == 2)
+    get_eng_2h2o<double>(inputFile, calGradient);
+  else if(body == 3)
+    get_eng_3h2o<double>(inputFile, calGradient);
+
+  return 0;
 }

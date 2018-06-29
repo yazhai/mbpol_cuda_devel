@@ -23,9 +23,12 @@
 #include "Gfunction_v2.h"
 #include "network.h"
 
-#define INFILE_3B   "22.hdf5" 
 #define INFILE_2B   "34.hdf5"
+#define INFILE_3B   "22.hdf5"
 #define INFILE1     INFILE_3B    // HDF5 files for Layer Data
+
+#define PARAM_FILE_2B "Gfunc_params_2Bv14_tuned.dat"
+#define PARAM_FILE_3B "Gfunc_params_3Bv16.dat"
 
 
 #define HMAX_FILE  "H_MAX"
@@ -54,6 +57,46 @@
 #define FLAG_PARAM_FILE            "paramfile" ;
 #define FLAG_ATOM_ORDER_FILE         "ordfile" ;
 #define FLAG_GFN_OUTPUT_ENABLE        "gfnOut" ;   
+
+// File as External Varible
+extern char inputFile[BUFSIZ]; // moduar
+extern char paramFile[BUFSIZ]; // parameter file for G function
+extern char orderFile[BUFSIZ]; // order file for G function
+extern char scaleFile[BUFSIZ]; // scale file for G function
+extern char nnFile[BUFSIZ];    // parameter file for Neural Network
+
+
+#define STR_USAGE_LONG "\n"\
+  "Usage: %s [--input] [--body] [--gradient] [--param] [--order] "\
+  "[--scale] [--nn] [--help]\n"\
+  "Calcualte Molecule Enery.\n"\
+  "  -i, --input <filename>  \n"\
+  "     Name of input file. Usaully ends with '.xyz'. Defaults to TODO \n"\
+  "  -b, --body <2|3>  \n"\
+  "     Specify trimer or dimer \n"\
+  "  -g, --gradient <0|1>  \n"\
+  "     Specify calculate gradient or not\n"\
+  "  -p, --param <filename>  \n"\
+  "     Name of parameter file for G function. \n"\
+  "  -o, --order <filename>  \n"\
+  "     [NOT USED FOR NOW] Name of order file for G function. \n"\
+  "  -s, --scale <filename>  \n"\
+  "     [NOT USED FOR NOW] Name of scale file for G function. \n"\
+  "  -n, --nn <filename>  \n"\
+  "     Name of parameter file for Neural Network. Should be in hdf5 format\n"\
+  "  -h, --help \n"\
+  "     Print the long help string\n"\
+  "\n"
+
+#define STR_USAGE_SHORT "\nUsage: %s --input --body --gradient [--param]"\
+                          " [--order] [--scale] [--nn] [--help]\n"\
+                          "Try '%s -h' for more information.\n"\
+                          "Try '%s $(cat my_config)'to run with a configure "\
+                          "file. \n"\
+                          "\n"
+
+#define OPEN_FILE_ERROR "ERROR: cannot open file:%s \n"
+
 
 const int THREDHOLD_COL = -1;
 const double THREDHOLD_MAX_VALUE = 60.0;
