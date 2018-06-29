@@ -1,2 +1,13 @@
 language: c++
 
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libhdf5-dev
+
+script:
+  - cd $TRAVIS_BUILD_DIR
+  - git checkout dev
+  - cd $TRAVIS_BUILD_DIR/NN_2L2H2O_poly2d_CPU
+  - mkdir build && cd build 
+  - cmake .. && make -j4
+
