@@ -735,8 +735,8 @@ int checkFile(char* buffer, char* optarg){
  * Error Conditions: None 
  * Return Value: None 
  */
-void checkDefaultFile(int body, char[] paramFile, char[] orderFile, 
-                   char[] scaleFile, char[] nnFile){
+void checkDefaultFile(int body, char paramFile[], char orderFile[], 
+                      char scaleFile[], char nnFile[]){
 
   if ( nnFile[0] == '\0') {
     // use default hdf5 file, defined in ../inc/bpnn_main.h
@@ -754,15 +754,15 @@ void checkDefaultFile(int body, char[] paramFile, char[] orderFile,
   }
 
   if( orderFile[0] == '\0'){
-    if (body == 2) strncpy(order, PARAM_FILE_2B, strlen(PARAM_FILE_2B));
-    if (body == 3) strncpy(order, PARAM_FILE_3B, strlen(PARAM_FILE_3B));
+    if (body == 2) strncpy(orderFile, PARAM_FILE_2B, strlen(PARAM_FILE_2B));
+    if (body == 3) strncpy(orderFile, PARAM_FILE_3B, strlen(PARAM_FILE_3B));
     printf("Use defualt order file for G function:%s which should"\
             " be found within the same folder\n", orderFile);
   }
 
   if( scaleFile[0] == '\0'){
-    if (body == 2) strncpy(scale, PARAM_FILE_2B, strlen(PARAM_FILE_2B));
-    if (body == 3) strncpy(scale, PARAM_FILE_3B, strlen(PARAM_FILE_3B));
+    if (body == 2) strncpy(scaleFile, PARAM_FILE_2B, strlen(PARAM_FILE_2B));
+    if (body == 3) strncpy(scaleFile, PARAM_FILE_3B, strlen(PARAM_FILE_3B));
     printf("Use defualt scale file for G function:%s which should"\
            " be found within the same folder\n", scaleFile);
   }
@@ -861,7 +861,7 @@ int main(int argc, char* argv[]){
     return EXIT_FAILURE;
 
   } else {
-    useDefaultFile(body, paramFile, orderFile, scaleFile, nnFile);
+    checkDefaultFile(body, paramFile, orderFile, scaleFile, nnFile);
 
   }
 
