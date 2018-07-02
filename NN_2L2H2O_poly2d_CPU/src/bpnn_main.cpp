@@ -343,6 +343,7 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
      T energy = 0;
      for (size_t i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
           energy +=  bpnn_2h2o.energy_[i] * bpnn_2h2o.switch_factor[i];
+          // TODO: replace with string defined in head file 
           cout << " Dimer " << i << " 's energy is " << bpnn_2h2o.energy_[i]* bpnn_2h2o.switch_factor[i] * (EUNIT) << endl;
      }
 
@@ -449,6 +450,8 @@ T MBbpnnPlugin::get_eng_3h2o(const char* xyzfile, bool ifgrad ){
      for (size_t i = 0; i < bpnn_3h2o.NCLUSTER; i++ ){
           energy +=  bpnn_3h2o.energy_[i] * bpnn_3h2o.switch_factor[i];
           // cout << " Dimer " << i << " 's energy is " << bpnn_3h2o.energy_[i]* bpnn_3h2o.switch_factor[i] * (EUNIT) << endl;
+          //
+          // TODO: replace with fixed string defined in head file 
 
           cout << " Dimer " << i << " 's energy is " << bpnn_3h2o.energy_[i]* bpnn_3h2o.switch_factor[i] *1 << endl;
 
