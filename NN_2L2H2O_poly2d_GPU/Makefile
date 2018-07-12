@@ -7,7 +7,7 @@
 
 # Location of the CUDA/CUDNN Toolkit
 CUDA_PATH      ?= /usr/local/cuda
-HDF5_PATH 	?= /server-home1/ndanande/local/hdf5
+# HDF5_PATH 	?= /server-home1/ndanande/local/hdf5
 CUDNN_PATH	?= /server-home1/ndanande/local/cuda
 
 # architecture

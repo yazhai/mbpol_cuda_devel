@@ -56,10 +56,11 @@ void Gfunction_t<T>::load_paramfile(const char* file){
 
 template<typename T>
 void Gfunction_t<T>::load_paramfile_default(){
-     gparams.read_param_from_file("H_rad");
-     gparams.read_param_from_file("H_ang");
-     gparams.read_param_from_file("O_rad");
-     gparams.read_param_from_file("O_ang");
+     gparams.read_param_from_file("Gfunc_params_2Bv14.dat");
+     // gparams.read_param_from_file("H_rad");
+     // gparams.read_param_from_file("H_ang");
+     // gparams.read_param_from_file("O_rad");
+     // gparams.read_param_from_file("O_ang");
 };
 
 
