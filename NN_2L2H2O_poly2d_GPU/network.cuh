@@ -121,6 +121,32 @@ void printDeviceVector(int size, T* vec_d)
     delete [] vec;
 }
 
+template <typename T>
+void printMatrix(T** d_data, int x, int y, int pitch=0){
+
+  pitch == 0 ? pitch = y : pitch = pitch;
+  int _outsize = x*pitch;
+  T* gradient_output = new T[_outsize];
+
+  cudaMemcpy(gradient_output, *d_data, _outsize * sizeof(T), cudaMemcpyDeviceToHost);
+  for(int xi=0; xi < x; xi++){
+    for(int yi=0; yi < pitch; yi++){
+      if(yi >= y) break;
+      cout<<gradient_output[xi*pitch + yi] <<" ";//<<endl;
+    }
+    cout<<endl;
+  }
+}
+
+// Helper function setting the data on Device
+template <typename T>
+__global__ void setMatrix(T *matrix, int width, int height, T val) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int i = idx; i < width * height; i += gridDim.x * blockDim.x) {
+    matrix[i]=val;
+  }
+}
+
 //===========================================================================================================
 // Type of layers
 enum class Type_t {
@@ -145,9 +171,9 @@ enum class ActType_t {
 template <typename T>
 struct Layer_t
 {
-    string name;
     
-    Type_t type ;
+    string name;
+    Type_t type;
                     
     ActType_t acttype;               
     
@@ -155,20 +181,22 @@ struct Layer_t
     int outputs;    // number of output dimension
     T *data_h, *data_d;  // weight matrix in host and device
     T *bias_h, *bias_d;  // bias vector in host and device
+    T *x, *y; // placeholder in device for x and y, only used in activation layer 
     
     Layer_t<T>* prev=nullptr;  // list ptr to previous layer
     Layer_t<T>* next=nullptr;  // list ptr to next layer
     
     
-    Layer_t<T>() :  name("Default_Layer"), data_h(NULL), data_d(NULL), bias_h(NULL), bias_d(NULL), 
-                inputs(0), outputs(0), type(Type_t::UNINITIALIZED), acttype(ActType_t::NOACTIVIATION) {};
-                
+    Layer_t<T>() :  name("Default_Layer"), data_h(NULL), data_d(NULL), 
+                    bias_h(NULL), bias_d(NULL), x(NULL), y(NULL), 
+                    inputs(0), outputs(0), type(Type_t::UNINITIALIZED), 
+                    acttype(ActType_t::NOACTIVIATION) {};
     
     
     // construct dense layer via loaded matrix from host
     Layer_t<T>( string _name, int _inputs, int _outputs, 
           T* _data_h, T* _bias_h)
-                  : inputs(_inputs), outputs(_outputs), type(Type_t::DENSE), acttype(ActType_t::NOACTIVIATION)
+                  : inputs(_inputs), outputs(_outputs), type(Type_t::DENSE), acttype(ActType_t::NOACTIVIATION), x(NULL), y(NULL)
     {     
         name = _name ;
         data_h = new T[inputs*outputs];       
@@ -190,7 +218,7 @@ struct Layer_t
     
     // construct an activation layer, by integer or by typename
     Layer_t<T>(string _name, int _acttype)
-                  : data_h(NULL), data_d(NULL), bias_h(NULL), bias_d(NULL), 
+                  : data_h(NULL), data_d(NULL), bias_h(NULL), bias_d(NULL), x(NULL), y(NULL),
                 inputs(0), outputs(0), type(Type_t::ACTIVIATION)
     {     
           if (_acttype < int(ActType_t::MAX_ACTTYPE_VALUE) ) {
@@ -200,7 +228,7 @@ struct Layer_t
     }    
     
     Layer_t<T>(string _name, ActType_t _acttype)
-                  : data_h(NULL), data_d(NULL), bias_h(NULL), bias_d(NULL), 
+                  : data_h(NULL), data_d(NULL), bias_h(NULL), bias_d(NULL), x(NULL), y(NULL),
                 inputs(0), outputs(0), type(Type_t::ACTIVIATION)
     {      
           acttype = _acttype;
@@ -215,6 +243,7 @@ struct Layer_t
         if (data_d != NULL) checkCudaErrors( cudaFree(data_d) );
         if (bias_h != NULL) delete [] bias_h;
         if (bias_d != NULL) checkCudaErrors( cudaFree(bias_d) );
+        // x(NULL), y(NULL)
     }
     
     
@@ -265,24 +294,37 @@ struct gemm{
 
 template <>
 struct gemm<double>{
-     gemm<double> (cublasHandle_t cublasHandle, int N, int _input_vector_length, int _output_vector_length, int _vector_pitch, 
-                    double *_weight, double *_inputs, double *_bias,
-                    double alpha=1.0, double beta=1.0){
+  gemm<double>(cublasHandle_t cublasHandle, int N, int _input_vector_length, 
+               int _output_vector_length, int _vector_pitch, 
+               double *_weight, double *_inputs, double *_bias, 
+               cublasOperation_t OP_A=CUBLAS_OP_N, 
+               cublasOperation_t OP_B=CUBLAS_OP_T,
+               double alpha=1.0, double beta=1.0){
                     
-                    int m = N;
-                    int n = _output_vector_length;
-                    int k = _input_vector_length;
+    int m = N;
+    int n = _output_vector_length;
+    int k = _input_vector_length;
 
-                    int stride = _vector_pitch/sizeof(double);
+    int stride = _vector_pitch/sizeof(double);
 
-                    checkCublasErrors( cublasDgemm(cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T,
-                                        m,n,k,
-                                        &alpha,
-                                        _inputs, stride,
-                                        _weight, n,
-                                        &beta,
-                                        _bias, stride));           
-     };
+    int lda = stride;
+    int ldb = n;
+
+    // when doing backward
+    if(OP_B != CUBLAS_OP_T){
+       lda = m;
+       ldb = k;
+       // cout<<"lda and ldb have been changed for backward!"<<endl;
+    }
+
+    checkCublasErrors(cublasDgemm(cublasHandle, OP_A, OP_B, 
+                                  m,n,k,
+                                  &alpha,
+                                  _inputs, lda,
+                                  _weight, ldb,
+                                  &beta,
+                                   _bias, stride));           
+  };
 };
 
 template <>
@@ -321,8 +363,14 @@ struct gemm<float>{
 // Offered methods :
 //                       fullyConnectedForward(layer, N, h, w, float/double* srcData, f/d** dstData)
 //                       softmaxForward(n, h, w, * srcData, ** dstData)
-//                       activiationforward_tanh (n, h, w, * srcData, ** dstData)
+//                       activiationforward_TANH (n, h, w, * srcData, ** dstData)
 //                       activiationforward_ReLU (n, h, w, * srcData, ** dstData)
+//
+// 		                   fullyConnectedBackward(layer, N, h, w, float/double* srcData, f/d** dstData)
+//			          [TODO] softmaxBackward(n, h, w, *srcData, ** dstData)
+//			          [TODO] activationbackward_TANH(n, h, w, * srcData, ** dstData)
+//			          [TODO] activationbackward_ReLU(n, h, w, * srcData, ** dstData)
+//			
 
 template <typename T>
 class network_t
@@ -391,10 +439,10 @@ private:
          int dimA[nDims] = {n,h,w,1};
          int strideA[nDims] = {h*w, w, 1,1}; // stride for each dimension
          checkCUDNN( cudnnSetTensorNdDescriptor(tensorDesc,
-                                                 dataType,
-                                                 4,
-                                                 dimA,
-                                                 strideA ) ); 
+                                                dataType,
+                                                4,
+                                                dimA,
+                                                strideA ) ); 
      }     
 
       
@@ -416,15 +464,15 @@ private:
         destroyHandles();
     }
     
-    // Resize device memory and initialize to 0
-    void resize(int size, T **data)
+    // Resize device memory and initialize to 0 in bytes
+    void resize(int size, T **data, int value=0)
     {
         if (*data != NULL)
         {
             checkCudaErrors( cudaFree(*data) );
         }
         checkCudaErrors( cudaMalloc(data, size*sizeof(T)) );
-        checkCudaErrors( cudaMemset(*data, 0, size*sizeof(T)) );        
+        checkCudaErrors( cudaMemset(*data, value, size*sizeof(T)) );        
     }
     
     
@@ -445,11 +493,11 @@ private:
                                     &beta,
                                     dstTensorDesc,
                                     dstdata) );
-          
     }        
     
   
     // Fully connected forwards, using cublas only
+    // dst[i][k] = w[i][j] * src[N*j + k] + bias
     void fullyConnectedForward(const Layer_t<T>& layer,
                           int& n, size_t & pitch, int& h, int& w,
                           T* srcData, T** dstData)
@@ -463,11 +511,78 @@ private:
         addBias( layer, strideDim, dim_y, 1, *dstData);
 
         // perform forward calculation
+        cout<<"Forward: inside gemm m="<<n<<" k="<<dim_x <<" n=" << dim_y<<endl;
         gemm<T>(cublasHandle,n, dim_x, dim_y, pitch, layer.data_d, srcData, *dstData);
 
         // for future ease, set h = total_num_of_ele_in_output, and w = 1
         h = dim_y; w = 1; 
     } 
+
+  /*
+   * Function Name: fullyConnectedBackward()
+   * Function Prototype: void fullyConnectedBackward(
+   *                       const Layer_t<T>& layer, int& n, size_t& pitch, 
+   *                       int& h, int& w, T* srcData, T** dstData)
+   * Description: Calcualte the gradient of a fully connected layer with gemm
+   * Parameters: 
+   *   - layer: Layer_t object with inited weights
+   *   - n: TODO unknow to me 
+   *   - pitch: TODO unknow to me
+   *   - h: TODO unknow to me 
+   *   - w: TODO unknow to me 
+   *   - srcData: TODO unknow to me 
+   *   - dstData: TODO unknow to me 
+   * Side Effects: overwrite the value in dstData. 
+   * Error Conditions: TODO
+   * Return Value: None 
+   */
+  void fullyConnectedBackward(const Layer_t<T>& layer,
+                      				int& n, size_t& pitch, int& h, int& w,
+  		                        T* srcData, T** dstData){
+
+    // dimension preparation 
+    int dim_x = layer.outputs;
+    int dim_y = layer.inputs;
+    int strideDim = pitch / sizeof(T);
+    resize(strideDim * dim_y, dstData);
+
+    // perform backword calculation
+
+    // CPU:
+    // forward: (weight) CblasTrans, (input) CblasNoTrans
+    // backward: (weight) CblasNoTrans, (input) CblasNoTrans
+
+    // GPU:
+    // forward: (weight) CUBLAS_OP_T, (input) CUBLAS_OP_N
+    // backward: (weight) CUBLAS_OP_N, (input) CUBLAS_OP_N
+
+    gemm<T>(cublasHandle, n, dim_x, dim_y, pitch, 
+            layer.data_d, srcData, *dstData, CUBLAS_OP_N, CUBLAS_OP_N, 1.0, 0);
+    
+    /*
+    double alpha = 1.0;
+    double beta = 0.0;
+
+    checkCublasErrors(cublasDgemm(cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
+                                  n, dim_y, dim_x,
+                                  &alpha,
+                                  srcData, n,
+                                  layer.data_d, dim_x,
+                                  &beta,
+                                  *dstData, n));
+    */ 
+    
+    // gemm<T>(cublasHandle,n, dim_x, dim_y, pitch, layer.data_d, srcData, *dstData);
+    // cublasOperation_t OP_A=CUBLAS_OP_N, cublasOperation_t OP_B=CUBLAS_OP_T,
+
+    // for future ease, set h = total_num_of_ele_in_output, and w = 1 (?)
+    h = dim_y; w = 1;
+
+    // cout<<" -weight"<<endl;
+    // printDeviceVector(layer.data_d, dim_x*dim_y);
+    // printMatrix<T>(&layer.data_d, dim_x, dim_y);
+
+  }
 
 
  
@@ -496,9 +611,9 @@ private:
     void activationForward_TANH(int n, int h, int w, T* srcData, T** dstData, size_t pitch)
     {
         checkCUDNN( cudnnSetActivationDescriptor(activDesc,
-                                                CUDNN_ACTIVATION_TANH,
-                                                CUDNN_PROPAGATE_NAN,
-                                                0.0) );    
+                                                 CUDNN_ACTIVATION_TANH,
+                                                 CUDNN_PROPAGATE_NAN,
+                                                 0.0));    
         int stride = pitch/sizeof(T);     
     
         resize(stride*h*w, dstData);
@@ -509,16 +624,108 @@ private:
         T alpha = 1.0;
         T beta  = 0.0;
         checkCUDNN( cudnnActivationForward(cudnnHandle,
-                                            activDesc,
-                                            &alpha,
-                                            srcTensorDesc,
-                                            srcData,
-                                            &beta,
-                                            dstTensorDesc,
-                                            *dstData) );   
+                                           activDesc,
+                                           &alpha,
+                                           srcTensorDesc,
+                                           srcData,
+                                           &beta,
+                                           dstTensorDesc,
+                                           *dstData) );   
     }
+  
+  /*
+  * Function Name: activationForward_TANH()
+  * Function Prototype: void activationForward_TANH(
+  *                       Layer_t<T>& layer, int n, int h, int w, 
+  *                       T* srcData, T** dstData, size_t pitch)
+  * Description: Calcualte the gradient of a tanh activation layer with cudnn
+  *              and store the input and output for gradient calculation
+  * Parameters: 
+  *   - layer [TODO]
+  *   - n:
+  * Side Effects: overwrite the value of dstData and layer.x, layer.y
+  * Error Conditions: 
+  * Return Value: None
+  */
+  void activationForward_TANH(Layer_t<T>& layer, int n, int h, int w, 
+                              T* srcData, T** dstData, size_t pitch){
+    // do the forward as usual
+    activationForward_TANH(n, h, w, srcData, dstData, pitch);
+
+    // allocate mem for x and y 
+    int size = n * pitch * h * w;
+    init_mtx_in_mem_d(layer.x, pitch, n, h*w);
+    init_mtx_in_mem_d(layer.y, pitch, n, h*w);
+
+    // checkCudaErrors(cudaMalloc(&(layer.x), size)); 
+    // checkCudaErrors(cudaMalloc(&(layer.y), size));
+
+    // copy from src to x, dst to y
+    cudaDeviceSynchronize();
+    checkCudaErrors(cudaMemcpy(layer.x, srcData, size, cudaMemcpyDeviceToDevice));
+    checkCudaErrors(cudaMemcpy(layer.y, *dstData, size, cudaMemcpyDeviceToDevice));
 
     
+    // cout<<"layer.x saved: "<<h << " * " << w << endl;
+    // printMatrix(&layer.x, h*w, n, pitch/sizeof(T));
+
+    // cout<<"layer.y saved:"<<endl;
+    // printMatrix(&layer.y, h*w, n, pitch/sizeof(T));
+  }
+
+  void activationBackward_TANH(Layer_t<T>& layer, int n, int h, int w, T* srcData, 
+                               T** dstData, size_t pitch){
+
+    // resize the dst pointer
+    resize(n*h*w, dstData);
+
+    // dimension preperation 
+    int stride = pitch/sizeof(T);
+    setTensorDesc(srcTensorDesc, dataType, stride, h, w);
+    setTensorDesc(dstTensorDesc, dataType, stride, h, w);
+
+
+    // cout<<"hello?"<<endl;
+    // cudnnTensorDescriptor_t yTensorDesc;
+    // cudnnCreateTensorDescriptor(&yTensorDesc);
+    // setTensorDesc(yTensorDesc, dataType, 64, h, w);
+
+
+    // store x, y for backword propagation 
+    T alpha = 1.0;
+    T beta  = 0.0;
+    
+    /*
+    cout<< "stride = " << stride << endl;
+    cout<< " -y(layer.y): " << h*w << " * " << n << endl;
+    printMatrix(&layer.y, h*w, n, 64);
+
+    cout<< " -dy(srcData): " << h*w << " * " << n << endl;
+    printMatrix(&srcData, h*w, n, pitch/sizeof(T));
+
+    cout<< " -x(layer.x): " << h*w << " * " << n << endl;
+    printMatrix(&layer.x, h*w, n, 64);
+
+    */
+
+    // cout<< " -dx(dstData): " << h*w << " * " << n << endl;
+    // printMatrix(dstData, h*w, n, pitch/sizeof(T));
+     
+    checkCUDNN(cudnnActivationBackward(cudnnHandle,
+                                       activDesc,
+                                       &alpha,        // pointer to scaling factor 
+                                       srcTensorDesc, // [yDesc] inited descriptor for input
+                                       layer.y,       // [y] pointer to GPU memory 
+                                       srcTensorDesc, // [dyDesc] .inited descriptor for diff input
+                                       srcData,       // [dy] .pointer to GPU memory 
+                                       srcTensorDesc, // [xDesc] inited descriptor for output
+                                       layer.x,       // [x] pointer to GPU memory
+                                       &beta,         // pointer to scaling factor
+                                       dstTensorDesc, // [dxDesc] .inited descriptor for output
+                                       *dstData));    // [dx] .pointer to GPU memory 
+    
+  }
+
     // activation forward with ReLU nonlinearty    
     void activationForward_ReLU(int n, int h, int w, T* srcData, T** dstData)
     {
@@ -715,9 +922,144 @@ public:
         
         }
         return;
-         
      } 
+  /*
+  void printMatrix(T** d_data, int x, int y){
+    int _outsize = x*y;
+    T* gradient_output = new T[_outsize];
+
+    cudaMemcpy(gradient_output, *d_data, _outsize * sizeof(T), cudaMemcpyDeviceToHost);
+    for(int ni=0; ni < x; ni++){
+      for(int wi=0; wi < y; wi++){
+        cout<<gradient_output[ni*x + wi] <<endl; 
+      }
+      cout<<endl;
+    }
+  }
+  */
+
+  void predict_and_getgrad(T* _inputData, size_t pitch, int _n, int _w, 
+  			                   T* & _outputData_h, unsigned long int& _outsize){
+
+    if (root == NULL) return;
+
+    // number of samples in one bactch; height; width
+    int n, h, w; 
+
+    // two storage places (alpha and bravo) saving data flow
+    T *devData_alpha = nullptr, *devData_bravo = nullptr;  
+
+    // Two ptr towards either alpha or bravo, controlling from which the data
+    // is read and to which the result is written to 
+    T** srcDataPtr = nullptr, **dstDataPtr = nullptr; 
+
+    // Initialize storage alpha and save input vector to in 
+    n = _n; h = 1; w = _w;
+    
+    devData_alpha = _inputData;
+    srcDataPtr = &devData_alpha;
+    dstDataPtr = &devData_bravo;
+
+    Layer_t<T>* curr = root;
+
+    // Forward 
+    do{
+      cout<<curr->name<<endl;
+      
+      if( curr->type == Type_t::DENSE){
+        // cout<<"input of forward fc layer: "<<endl;
+        // printMatrix(srcDataPtr, curr->inputs, n, pitch/sizeof(T));
+        neural_net.fullyConnectedForward(*curr, n, pitch, h, w, *srcDataPtr, 
+                                         dstDataPtr);
+        switchptr(srcDataPtr, dstDataPtr);
+        // cout<<"output of forward fc layer: " <<endl;
+        // printMatrix(srcDataPtr, curr->outputs, n, pitch/sizeof(T));
+
+      }else if(curr->type == Type_t::ACTIVIATION){
+        if (curr -> acttype == ActType_t::TANH){
+          neural_net.activationForward_TANH(*curr, n, h, w, *srcDataPtr, dstDataPtr, 
+                                            pitch);
+          switchptr(srcDataPtr, dstDataPtr);
+        }else if(curr->acttype != ActType_t::LINEAR){
+          cout << "Unknown activation type!" <<endl ;
+        }
+
+      }else{
+        cout << "Unkown layer type!" << endl;
+      }
+    }while((curr->next != NULL) && (curr = curr->next)) ;
+
+
+    // Store output 
+    _outsize=n*h*w;
+    if(_outputData_h != NULL) delete[] _outputData_h;
+    _outputData_h = new T[_outsize];
+
+    cudaDeviceSynchronize();
+    cudaMemcpy(_outputData_h, *srcDataPtr, _outsize*sizeof(T), 
+               cudaMemcpyDeviceToHost);
+
+    // Reset srcDatePtr to 1
+    neural_net.resize(n*1, srcDataPtr);
+    int blockSize = 256;
+    int numBlocks = (n*n + blockSize - 1) / (n*n);
+    setMatrix<T><<<blockSize, numBlocks>>>(*srcDataPtr, n, 1, 1.0);// bad implement 
+    
+    cout<<"Start to run backward! "<<endl;
+
+    // Do backward immediately
+    double * gradient_output = nullptr;
+
+    while(true){
+      if(curr-> type == Type_t::DENSE){ 
+        cout<<"Fully Connected -> "<< endl;
+        // cout<<"Fully Connected "<< h*w <<"*"<<curr->inputs << " -> "<< endl;
+        // cout<<" -output" << endl;
+        // printMatrix(srcDataPtr, curr->outputs, n, pitch/sizeof(T));
+        neural_net.fullyConnectedBackward(*curr, n, pitch, h, w, *srcDataPtr, 
+                                          dstDataPtr);
+
+        switchptr(srcDataPtr, dstDataPtr);
+        // cout<<" -input: " << h*w << " * " << n << endl;
+        // printMatrix(srcDataPtr, curr->inputs, n, pitch/sizeof(T));
+
+      }else if(curr -> type == Type_t::ACTIVIATION){
+        if(curr -> acttype == ActType_t::TANH){
+          cout<<"Tanh -> "<< endl;
+          // cout<<"Tanh backward " << endl;
+          // cout<<" -output: " << h*w << " * " << n << endl;
+          // printMatrix(srcDataPtr, h*w, n, pitch/sizeof(T));
+          neural_net.activationBackward_TANH(*curr, n, h, w, 
+                                             *srcDataPtr, dstDataPtr,
+                                             pitch);
+          switchptr(srcDataPtr, dstDataPtr);
+          // cout<<" -input: " << h*w << " * " << n << endl;
+          // printMatrix(srcDataPtr, h*w, n, pitch/sizeof(T));
+
+        }else if(curr->acttype == ActType_t::LINEAR){
+          cout << "Linear(do nothing) -> "<< endl;
+        }else{
+          // cout << "Unknown Activation Type!" << endl;
+        }
+      }else{
+        // cout << "Unknown layer type!" <<endl;
+      }
+
+      if( curr->prev == NULL) break;
+      curr = curr->prev;
+    }
+
+    cout<< "Done!" << endl;
+    cout<< "Gadient before G function: "<< endl;
+    printMatrix(srcDataPtr, h*w, n, pitch/sizeof(T));
+
+    // store srcDataPtr to check the gradient of nn
+    // if(gradient_output != NULL) delete[] gradient_output;
+
+    n = _n; h = 1; w = _w;
+  }
 };
+
 
 //Structure to hold all the different networks needed after they are built
 template<typename T>
@@ -732,7 +1074,7 @@ struct allNets_t{
      allNets_t(size_t _numNetworks, const char* filename, const char* checkchar)
      :numNetworks(_numNetworks){
 
-          nets = new Layer_Net_t<T>[numNetworks];
+      nets = new Layer_Net_t<T>[numNetworks];
           H5::H5File file(filename,H5F_ACC_RDONLY);
 
           hsize_t data_rank=0;
@@ -829,25 +1171,36 @@ struct allNets_t{
      }
 
 
-     void runAllNets(Gfunction_t<T> * gf, T * finalOutput){
+     void runAllNets(Gfunction_t<T> * gf, T * finalOutput, bool getGradient=false){
           double * output = nullptr;
           size_t outsize = 0;
           size_t N = gf->NCluster;
+
           for(int i = 0; i< gf->model.NATOM; i++){
                size_t currAtomType = gf->model.TYPE_EACHATOM[i];
                cout<<"Running Network for "<<currAtomType<< " Atom "<<i<<" : "<<endl;
-               nets[currAtomType].predict(gf->G_d[i]->dat,gf->G_d[i]->pitch,N,
-                    gf->G_param_max_size[currAtomType], output, outsize);
-               for(int a = 0; a< N; a++){
-                    finalOutput[a] += output[a];
-                    cout<<output[a]<<endl;
-
+               getGradient = true; // hardcoded for test 
+               if(getGradient){
+                 nets[currAtomType].predict_and_getgrad(gf->G_d[i]->dat, gf->G_d[i]->pitch, N,
+                                                        gf->G_param_max_size[currAtomType], 
+                                                        output, outsize);
+               }else{
+                 nets[currAtomType].predict(gf->G_d[i]->dat,gf->G_d[i]->pitch,N,
+                                            gf->G_param_max_size[currAtomType], output, outsize);
                }
+
+               cout<<"Finish Network for "<<currAtomType<< " Atom "<<i<<" ."<<endl;
+               // cout<<"summed result before cutoff: " <<endl;
+               for(int a = 0; a< N; a++){
+                    finalOutput[a] += output[a]; 
+               //   cout<<a<< " "<< finalOutput[a]<<endl;
+               }
+               // return; // quick debug 
           }
 
-          double * cutoffs = nullptr;
-          cutoffs = (double*)malloc(N*sizeof(double));
-          cudaMemcpy(cutoffs, gf->cutoffs, N*sizeof(double),cudaMemcpyDeviceToHost);
+          T* cutoffs = nullptr;
+          cutoffs = (T*)malloc(N*sizeof(double));
+          cudaMemcpy(cutoffs, gf->cutoffs, N*sizeof(T), cudaMemcpyDeviceToHost);
           for(int a = 0; a<N; a++){
                finalOutput[a]*= cutoffs[a]*(EUNIT);
           }
