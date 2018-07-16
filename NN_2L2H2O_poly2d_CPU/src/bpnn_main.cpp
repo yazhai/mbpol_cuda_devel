@@ -257,97 +257,100 @@ T MBbpnnPlugin::get_eng_2h2o(size_t nd, std::vector<T>xyz1, std::vector<T>xyz2, 
 
 
 
-
+// real get_eng_2h2o fired in main
 template<typename T>
 T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){ 
 
-     static bpnn_t<T> bpnn_2h2o;
-     bpnn_2h2o.load_xyzfile(xyzfile) ; 
+  static bpnn_t<T> bpnn_2h2o;
+  bpnn_2h2o.load_xyzfile(xyzfile) ; 
 
-     bpnn_2h2o.load_seq_2h2o_default();
-     bpnn_2h2o.load_paramfile_2h2o_default();
-     bpnn_2h2o.load_scale_2h2o_default();
-     bpnn_2h2o.init_allNNs(2, nnFile, CHECKCHAR2);
+  bpnn_2h2o.load_seq_2h2o_default();
+  bpnn_2h2o.load_paramfile_2h2o_default();
+  bpnn_2h2o.load_scale_2h2o_default();
+  bpnn_2h2o.init_allNNs(2, nnFile, CHECKCHAR2);
 
-     bpnn_2h2o.make_G();
-     if (ifgrad) {   
-          bpnn_2h2o.cal_switch_with_grad(2);
-     } else {
-          bpnn_2h2o.cal_switch(2);
-     }
+  bpnn_2h2o.make_G();
+  if( ifgrad ){   
+    bpnn_2h2o.cal_switch_with_grad(2);
+  } else {
+    bpnn_2h2o.cal_switch(2);
+  }
 
-     if (bpnn_2h2o.energy_ != nullptr) delete[] bpnn_2h2o.energy_ ;
+  if (bpnn_2h2o.energy_ != nullptr) delete[] bpnn_2h2o.energy_ ;
 
-     bpnn_2h2o.energy_ = new T [bpnn_2h2o.NCLUSTER]();
-     T * tmp = new T [bpnn_2h2o.NCLUSTER]() ;
+  bpnn_2h2o.energy_ = new T [bpnn_2h2o.NCLUSTER]();
+  T * tmp = new T [bpnn_2h2o.NCLUSTER]() ;
 
-     if(!ifgrad){
-          for(idx_t at = 0; at < bpnn_2h2o.NATOM; at ++){
-               size_t tp_idx = bpnn_2h2o.TYPE_EACHATOM[at];
-               bpnn_2h2o.nets[tp_idx].predict(*bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER, tmp );
+  if(!ifgrad){
+    for(idx_t at = 0; at < bpnn_2h2o.NATOM; at ++){
+      size_t tp_idx = bpnn_2h2o.TYPE_EACHATOM[at];
+      bpnn_2h2o.nets[tp_idx].predict(*bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER, tmp );
+               
+      cout<<"Finish Network for "<<tp_idx<< " Atom "<<at<<" ."<<endl;
 
-               for (int i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
-                    bpnn_2h2o.energy_[i] += tmp[i];
-               }
-          }
+      for(int i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
+         bpnn_2h2o.energy_[i] += tmp[i];
+       }
+    }
 
-     } else {
+  } else {
+    T * tmp_grd = nullptr;
+    T** tmp_grd2= nullptr;
+    std::vector<T**> dfdG;
 
-          T * tmp_grd = nullptr;
-          T** tmp_grd2= nullptr;
-          std::vector<T**> dfdG;
+    // run neural network on each atom and store the result in energy_ and gradient in dfdG
+    for(idx_t at = 0; at < bpnn_2h2o.NATOM; at ++){
+      size_t tp_idx = bpnn_2h2o.TYPE_EACHATOM[at];
+      bpnn_2h2o.nets[tp_idx].predict_and_getgrad(*bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER, tmp, tmp_grd);
 
-          for(idx_t at = 0; at < bpnn_2h2o.NATOM; at ++){
-               size_t tp_idx = bpnn_2h2o.TYPE_EACHATOM[at];
-               bpnn_2h2o.nets[tp_idx].predict_and_getgrad(*bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER, tmp, tmp_grd );
+      init_mtx_in_mem(tmp_grd2, bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER) ;
+      copy(tmp_grd, tmp_grd + bpnn_2h2o.NCLUSTER * bpnn_2h2o.G_param_max_size[tp_idx],tmp_grd2[0] );
 
-               init_mtx_in_mem(tmp_grd2, bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER) ;
-               copy(tmp_grd, tmp_grd + bpnn_2h2o.NCLUSTER * bpnn_2h2o.G_param_max_size[tp_idx],tmp_grd2[0] );
+      if (tmp_grd != nullptr){
+        delete [] tmp_grd;
+        tmp_grd = nullptr;
+      }
+      dfdG.push_back(tmp_grd2);
+         // tmp_grd
 
-               if (tmp_grd != nullptr){
-                    delete [] tmp_grd;
-                    tmp_grd = nullptr;
-               }
-               dfdG.push_back(tmp_grd2);
-               // tmp_grd
+      for (int i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
+         bpnn_2h2o.energy_[i] += tmp[i];
+      }
+      // return 0;
+    }
 
-               for (int i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
-                    bpnn_2h2o.energy_[i] += tmp[i];
-               }
-          }
+    // calculate the gradient introduced by G function 
+    init_mtx_in_mem(bpnn_2h2o.dfdxyz , (size_t)(bpnn_2h2o.NATOM *3) , bpnn_2h2o.NCLUSTER);
+    bpnn_2h2o.make_grd(dfdG);
 
-          // save partially gradient       
-          init_mtx_in_mem(bpnn_2h2o.dfdxyz , (size_t)(bpnn_2h2o.NATOM *3) , bpnn_2h2o.NCLUSTER);
-          bpnn_2h2o.make_grd(dfdG);
+    for(auto it= dfdG.begin(); it!= dfdG.end(); it++){
+      clearMemo(*it);
+    }
 
-          for (auto it= dfdG.begin(); it!= dfdG.end(); it++){
-               clearMemo(*it);
-          }
+    // another part of gradient comes from switching function
+    bpnn_2h2o.scale_dfdx_with_switch(2, bpnn_2h2o.energy_);
 
-          // another part of gradient comes from switching function
-          bpnn_2h2o.scale_dfdx_with_switch(2, bpnn_2h2o.energy_);
+    for(size_t j=0; j < bpnn_2h2o.NCLUSTER; j++){
+      for(size_t i =0; i< bpnn_2h2o.NATOM*3; i++){
+        cout << bpnn_2h2o.dfdxyz[i][j] * (EUNIT) << "   ";
+        // bpnn_2h2o.dfdxyz[i][j] *= (EUNIT) ; 
+      }
+      cout << endl;
+    }
 
-          for(size_t j=0; j < bpnn_2h2o.NCLUSTER; j++){
-               for(size_t i =0; i< bpnn_2h2o.NATOM*3; i++){
-                         cout << bpnn_2h2o.dfdxyz[i][j] * (EUNIT) << "   ";
-                         // bpnn_2h2o.dfdxyz[i][j] *= (EUNIT) ; 
-                    }
-               cout << endl;
-          }
-
-          cout << " gradient is done, but not returned " << endl;
-     }
+    cout << " gradient is done, but not returned " << endl;
+  }
                    
-     delete [] tmp; 
+  delete [] tmp; 
 
-     T energy = 0;
-     for (size_t i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
-          energy +=  bpnn_2h2o.energy_[i] * bpnn_2h2o.switch_factor[i];
-          // TODO: replace with string defined in head file 
-          cout << " Dimer " << i << " 's energy is " << bpnn_2h2o.energy_[i]* bpnn_2h2o.switch_factor[i] * (EUNIT) << endl;
-     }
+  T energy = 0;
+  for(size_t i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
+    energy +=  bpnn_2h2o.energy_[i] * bpnn_2h2o.switch_factor[i];
+    // TODO: replace with string defined in head file 
+    cout << " Dimer " << i << " 's energy is " << bpnn_2h2o.energy_[i]* bpnn_2h2o.switch_factor[i] * (EUNIT) << endl;
+  }
 
-     return energy*(EUNIT);
+  return energy*(EUNIT);
 }
 
 
