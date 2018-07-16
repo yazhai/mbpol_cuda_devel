@@ -284,7 +284,9 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
   if(!ifgrad){
     for(idx_t at = 0; at < bpnn_2h2o.NATOM; at ++){
       size_t tp_idx = bpnn_2h2o.TYPE_EACHATOM[at];
-      bpnn_2h2o.nets[tp_idx].predict(*bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER, tmp );
+      bpnn_2h2o.nets[tp_idx].predict(
+        *bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], 
+        bpnn_2h2o.NCLUSTER, tmp);
                
       cout<<"Finish Network for "<<tp_idx<< " Atom "<<at<<" ."<<endl;
 
@@ -298,13 +300,19 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
     T** tmp_grd2= nullptr;
     std::vector<T**> dfdG;
 
-    // run neural network on each atom and store the result in energy_ and gradient in dfdG
+    // run neural network on each atom and store the result in energy_ and 
+    // gradient in dfdG
     for(idx_t at = 0; at < bpnn_2h2o.NATOM; at ++){
       size_t tp_idx = bpnn_2h2o.TYPE_EACHATOM[at];
-      bpnn_2h2o.nets[tp_idx].predict_and_getgrad(*bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER, tmp, tmp_grd);
+      bpnn_2h2o.nets[tp_idx].predict_and_getgrad(
+        *bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], 
+        bpnn_2h2o.NCLUSTER, tmp, tmp_grd);
 
-      init_mtx_in_mem(tmp_grd2, bpnn_2h2o.G_param_max_size[tp_idx], bpnn_2h2o.NCLUSTER) ;
-      copy(tmp_grd, tmp_grd + bpnn_2h2o.NCLUSTER * bpnn_2h2o.G_param_max_size[tp_idx],tmp_grd2[0] );
+      init_mtx_in_mem(tmp_grd2, bpnn_2h2o.G_param_max_size[tp_idx], 
+                      bpnn_2h2o.NCLUSTER);
+      copy(tmp_grd,
+           tmp_grd + bpnn_2h2o.NCLUSTER * bpnn_2h2o.G_param_max_size[tp_idx],
+           tmp_grd2[0] );
 
       if (tmp_grd != nullptr){
         delete [] tmp_grd;
@@ -320,7 +328,8 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
     }
 
     // calculate the gradient introduced by G function 
-    init_mtx_in_mem(bpnn_2h2o.dfdxyz , (size_t)(bpnn_2h2o.NATOM *3) , bpnn_2h2o.NCLUSTER);
+    init_mtx_in_mem(bpnn_2h2o.dfdxyz, (size_t)(bpnn_2h2o.NATOM*3), 
+                    bpnn_2h2o.NCLUSTER);
     bpnn_2h2o.make_grd(dfdG);
 
     for(auto it= dfdG.begin(); it!= dfdG.end(); it++){
@@ -347,7 +356,8 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
   for(size_t i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
     energy +=  bpnn_2h2o.energy_[i] * bpnn_2h2o.switch_factor[i];
     // TODO: replace with string defined in head file 
-    cout << " Dimer " << i << " 's energy is " << bpnn_2h2o.energy_[i]* bpnn_2h2o.switch_factor[i] * (EUNIT) << endl;
+    cout<<" Dimer " << i << " 's energy is " << 
+          bpnn_2h2o.energy_[i]* bpnn_2h2o.switch_factor[i] * (EUNIT) << endl;
   }
 
   return energy*(EUNIT);
