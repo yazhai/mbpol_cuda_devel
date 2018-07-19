@@ -652,8 +652,10 @@ private:
     // do the forward as usual
     activationForward_TANH(n, h, w, srcData, dstData, pitch);
 
-    // allocate mem for x and y 
-    int size = n * pitch * h * w;
+    // allocate mem for x and y, should be same size as srcData
+    int size = n * h * w * sizeof(T);
+    // n * pitch * h * w;
+
     init_mtx_in_mem_d(layer.x, pitch, n, h*w);
     init_mtx_in_mem_d(layer.y, pitch, n, h*w);
 
