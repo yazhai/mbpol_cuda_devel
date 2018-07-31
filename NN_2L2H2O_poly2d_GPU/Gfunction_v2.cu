@@ -149,8 +149,8 @@ void Gfunction_t<T>::scale_G(const char ** _scaleFiles){
 
 
 
-     std::string filename = "O_out_scale.dat";
-     G_d[0]->printFile(filename.c_str());
+     // std::string filename = "O_out_scale.dat";
+     // G_d[0]->printFile(filename.c_str());
      std::cout<<std::endl;
 
 
