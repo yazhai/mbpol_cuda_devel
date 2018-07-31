@@ -144,7 +144,7 @@ void Functional_t<T>::fullyConnectedForward(const Layer_t<T> & layer,
      for(int i=0;i<output;i++){
           for(int j=0;j<input;j++){
                #ifdef _OPENMP 
-               #pragma omp parallel for simd shared(dstData,srcData,wt, N)
+               #pragma omp parallel for simd shared(dstData,srcData,wt)
                #endif 
                for (int k=0;k<N;k++){
                     dstData[i][k] += wt[i][j]*srcData[N*j+k];
@@ -157,7 +157,7 @@ void Functional_t<T>::fullyConnectedForward(const Layer_t<T> & layer,
      T* bs = layer.bias;
      for(int i=0;i< output;i++){
           #ifdef _OPENMP
-          #pragma omp parallel for simd shared(dstData,bs, N)
+          #pragma omp parallel for simd shared(dstData,bs)
           #endif 
           for(int j=0;j<N;j++){
                dstData[i][j] += bs[i];
@@ -184,7 +184,7 @@ void Functional_t<T>::activationForward_TANH(Layer_t<T> & layer,  const size_t N
           //complete faster TANH computation
           for(int i=0;i<output;i++){
                #ifdef _OPENMP
-               #pragma omp parallel for simd shared(srcData,dstData, grd_tmp, N)
+               #pragma omp parallel for simd shared(srcData,dstData, grd_tmp)
                #endif 
                for(int j=0;j<N;j++){
                     T x = exp( srcData[i*N + j] *2 );
@@ -196,7 +196,7 @@ void Functional_t<T>::activationForward_TANH(Layer_t<T> & layer,  const size_t N
           //complete faster TANH computation
           for(int i=0;i<output;i++){
                #ifdef _OPENMP
-               #pragma omp parallel for simd shared(srcData,dstData, N)
+               #pragma omp parallel for simd shared(srcData,dstData)
                #endif 
                for(int j=0;j<N;j++){
                     T x = exp( srcData[i*N + j] *2 );
@@ -229,7 +229,7 @@ void Functional_t<T>::fullyConnectedBackward(const Layer_t<T> & layer,
      for(int j=0;j< output;j++){
           for(int i=0;i<input;i++){
                #ifdef _OPENMP
-               #pragma omp parallel for simd shared(dstData,srcData,wt, N)
+               #pragma omp parallel for simd shared(dstData,srcData,wt)
                #endif 
                for (int k=0;k<N;k++){
                     dstData[j][k] += wt[i][j]*srcData[N*i+k];
@@ -255,7 +255,7 @@ void Functional_t<T>::activationBackward_TANH(const Layer_t<T> & layer,  const s
      T** wt = layer.weights;
      for(int i=0;i<output;i++){
           #ifdef _OPENMP
-          #pragma omp parallel for simd shared(srcData,dstData,N, wt)
+          #pragma omp parallel for simd shared(srcData,dstData,wt)
           #endif 
           for(int j=0;j<N;j++){
                dstData[i][j] = srcData[i*N + j] * wt[i][j];

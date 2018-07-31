@@ -4,7 +4,7 @@ project (bpnn_main.x)
 #select libraries to employ
 option(_USE_GSL "use gsl_cblas library" 0)
 option(_USE_MKL "use mkl_cblas library" 0)
-option(_USE_OPENMP "use openmp library" 0)
+option(_USE_OPENMP "use openmp library" y)
 option(_CMP_INTEL "use intel compiler" 0)
 option(_CMP_GNU "use gnu c++ compiler" 1)
 
@@ -58,8 +58,11 @@ endif(${_USE_GSL})
 
 if(${_USE_OPENMP})
 	set(LIBS ${LIBS} -fopenmp)
-	add_definitions(-D_OPENMP)
+	add_definitions(-D_OPENMP -fopenmp)
 endif(${_USE_OPENMP})
+
+set(LIBS ${LIBS} -fopenmp)
+add_definitions(-D_OPENMP -fopenmp)
 
 	
 #libaries
