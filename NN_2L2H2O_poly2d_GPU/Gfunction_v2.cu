@@ -118,7 +118,7 @@ void Gfunction_t<T>::load_cutoffs(){
         fswitch_3b<T><<<BPG,TPB>>>(cutoffs, xyz_d->get_elem_ptr(0,0), xyz_d->get_elem_ptr(1,0), xyz_d->get_elem_ptr(2,0),0.0,ri, NCluster);  
     }
 
-     std::cout<<"INSIDE OF LOAD CUTOFFS FUNCTION , DEVICE VECTOR IS: "<<std::endl;
+     std::cerr<<"INSIDE OF LOAD CUTOFFS FUNCTION , DEVICE VECTOR IS: "<<std::endl;
     printDeviceVector(cutoffs,NCluster);
     return; 
 }

@@ -77,13 +77,13 @@ int main(int argc, char** argv){
      //make g function from xyz
      gf->make_G_XYZ(argv[1], paramfile.c_str(), ordfile.c_str(), scaleFiles);
 
-     cout<<"Creating Network"<<endl;
+     cerr<<"Creating Network"<<endl;
      size_t numTypes = gf->NType;
-     cout<<"NTypes: "<<numTypes<<endl;
+     cerr<<"NTypes: "<<numTypes<<endl;
      size_t numAtoms = gf->model.NATOM;
-     cout<< "NAtoms: "<<numAtoms<<endl;
+     cerr<< "NAtoms: "<<numAtoms<<endl;
      size_t N = gf->NCluster;
-     cout<< "NClusters: "<< N<<endl;
+     cerr<< "NClusters: "<< N<<endl;
 
 
      //-------------------------------//CALCULATE ENERGIES //-------------------------------//

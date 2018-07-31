@@ -45,35 +45,35 @@ void Read_Layer_Data_By_DatName (H5File file, const char* name, T* & data_out, h
          try{
               switch(type_class){
                     case H5T_INTEGER :{
-                         std::cout << name << " : " <<std::endl;
-                         std::cout <<  "     - type is : H5T_INT " <<std::endl;
+                         std::cerr << name << " : " <<std::endl;
+                         std::cerr <<  "     - type is : H5T_INT " <<std::endl;
                          IntType intype = dset.getIntType();
                          
                          // Get order of datatype and print message if it's a little endian.
                          H5std_string order_string;
                          H5T_order_t order = intype.getOrder( order_string );
-                         std::cout <<  "     - encoded as : " << order_string << std::endl;
+                         std::cerr <<  "     - encoded as : " << order_string << std::endl;
                          
                          // Get size of the data element stored in file and print it.
                          size_t size = intype.getSize();
-                         std::cout <<  "     - size of each data is : " << size << std::endl;
+                         std::cerr <<  "     - size of each data is : " << size << std::endl;
                          
                          }break;
                          
                     case H5T_FLOAT :{
-                         std::cout << name << " : " <<std::endl;
-                         std::cout <<  "     - type is : H5T_FLOAT " <<std::endl;
+                         std::cerr << name << " : " <<std::endl;
+                         std::cerr <<  "     - type is : H5T_FLOAT " <<std::endl;
                          FloatType fttype = dset.getFloatType();
 
                          
                          // Get order of datatype and print message if it's a little endian.
                          H5std_string order_string;
                          H5T_order_t order = fttype.getOrder( order_string );
-                         std::cout <<  "     - encoded as : " << order_string << std::endl;     
+                         std::cerr <<  "     - encoded as : " << order_string << std::endl;     
                          
                          // Get size of the data element stored in file and print it.
                          size_t size = fttype.getSize();
-                         std::cout <<  "     - size of each data is : " << size << std::endl;                       
+                         std::cerr <<  "     - size of each data is : " << size << std::endl;                       
                                            
                          }break;
   
@@ -98,7 +98,7 @@ void Read_Layer_Data_By_DatName (H5File file, const char* name, T* & data_out, h
           
           
          for (int ii=0; ii<rank; ii++) {
-               std::cout << "     - dim " << ii << " is of size "<< dims[ii] << std::endl;  
+               std::cerr << "     - dim " << ii << " is of size "<< dims[ii] << std::endl;  
          }
          
 

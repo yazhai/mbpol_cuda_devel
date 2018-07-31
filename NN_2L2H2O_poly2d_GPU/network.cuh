@@ -85,10 +85,11 @@
 #include<cudnn.h>
 #include<cublas_v2.h>
 
-#include"error_util.hpp"
-#include"whichtype.hpp"
+#include "error_util.hpp"
+#include "whichtype.hpp"
 #include "readhdf5.hpp"
 #include "Gfunction_v2.cuh"
+#include "timestamps.h"
 
 //hdf5 file things
 #define PATHTOMODEL "/model_weights"    // usual path to the group saving all the layers in HDF5 file
@@ -511,7 +512,7 @@ private:
         addBias( layer, strideDim, dim_y, 1, *dstData);
 
         // perform forward calculation
-        cout<<"Forward: inside gemm m="<<n<<" k="<<dim_x <<" n=" << dim_y<<endl;
+        // cout<<"Forward: inside gemm m="<<n<<" k="<<dim_x <<" n=" << dim_y<<endl;
         gemm<T>(cublasHandle,n, dim_x, dim_y, pitch, layer.data_d, srcData, *dstData);
 
         // for future ease, set h = total_num_of_ele_in_output, and w = 1
@@ -878,7 +879,7 @@ public:
                                   
              Layer_t<T>* curr = root;
              do{
-               cout<<curr->name<<endl;
+               cerr<<curr->name<<endl;
 
                //cout << " Processing Layer : " << curr->name << endl;
                if ( curr-> type == Type_t::DENSE ) { 
@@ -925,20 +926,6 @@ public:
         }
         return;
      } 
-  /*
-  void printMatrix(T** d_data, int x, int y){
-    int _outsize = x*y;
-    T* gradient_output = new T[_outsize];
-
-    cudaMemcpy(gradient_output, *d_data, _outsize * sizeof(T), cudaMemcpyDeviceToHost);
-    for(int ni=0; ni < x; ni++){
-      for(int wi=0; wi < y; wi++){
-        cout<<gradient_output[ni*x + wi] <<endl; 
-      }
-      cout<<endl;
-    }
-  }
-  */
 
   void predict_and_getgrad(T* _inputData, size_t pitch, int _n, int _w, 
   			                   T* & _outputData_h, unsigned long int& _outsize){
@@ -966,7 +953,7 @@ public:
 
     // Forward 
     do{
-      cout<<curr->name<<endl;
+      cerr<<curr->name<<endl;
       
       if( curr->type == Type_t::DENSE){
         // cout<<"input of forward fc layer: "<<endl;
@@ -1007,14 +994,14 @@ public:
     int numBlocks = (n*n + blockSize - 1) / (n*n);
     setMatrix<T><<<blockSize, numBlocks>>>(*srcDataPtr, n, 1, 1.0);// bad implement 
     
-    cout<<"Start to run backward! "<<endl;
+    cerr<<"Start to run backward! "<<endl;
 
     // Do backward immediately
     double * gradient_output = nullptr;
 
     while(true){
       if(curr-> type == Type_t::DENSE){ 
-        cout<<"Fully Connected -> "<< endl;
+        cerr<<"Fully Connected -> "<< endl;
         // cout<<"Fully Connected "<< h*w <<"*"<<curr->inputs << " -> "<< endl;
         // cout<<" -output" << endl;
         // printMatrix(srcDataPtr, curr->outputs, n, pitch/sizeof(T));
@@ -1027,7 +1014,7 @@ public:
 
       }else if(curr -> type == Type_t::ACTIVIATION){
         if(curr -> acttype == ActType_t::TANH){
-          cout<<"Tanh -> "<< endl;
+          cerr<<"Tanh -> "<< endl;
           // cout<<"Tanh backward " << endl;
           // cout<<" -output: " << h*w << " * " << n << endl;
           // printMatrix(srcDataPtr, h*w, n, pitch/sizeof(T));
@@ -1039,7 +1026,7 @@ public:
           // printMatrix(srcDataPtr, h*w, n, pitch/sizeof(T));
 
         }else if(curr->acttype == ActType_t::LINEAR){
-          cout << "Linear(do nothing) -> "<< endl;
+          cerr << "Linear(do nothing) -> "<< endl;
         }else{
           // cout << "Unknown Activation Type!" << endl;
         }
@@ -1051,9 +1038,9 @@ public:
       curr = curr->prev;
     }
 
-    cout<< "Done!" << endl;
-    cout<< "Gadient before G function: "<< endl;
-    printMatrix(srcDataPtr, h*w, n, pitch/sizeof(T));
+    cerr<< "Done!" << endl;
+    // cout<< "Gadient before G function: "<< endl;
+    // printMatrix(srcDataPtr, h*w, n, pitch/sizeof(T));
 
     // store srcDataPtr to check the gradient of nn
     // if(gradient_output != NULL) delete[] gradient_output;
@@ -1068,6 +1055,8 @@ template<typename T>
 struct allNets_t{
      Layer_Net_t<T> * nets;
      size_t  numNetworks;
+     timers_t timers;
+     timerid_t id;
 
      //Default constructor
      allNets_t(): nets(nullptr), numNetworks(0) {}
@@ -1104,9 +1093,9 @@ struct allNets_t{
                     // get this layer's dataset names(weights and bias)
                     vector<string> weights;
                     weights = Read_Attr_Data_By_Seq(file,seqPath.c_str(), WEIGHTNAMES);
-                    cout<<*it<<endl;
+                    cerr<<*it<<endl;
 
-                    cout << " Reading out data: " << *it << endl;
+                    cerr << " Reading out data: " << *it << endl;
                     for (auto it2 = weights.begin(); it2 != weights.end(); it2++){ 
                          // for one data set get path
                          string datasetPath = mkpath(seqPath,*it2) ;
@@ -1123,19 +1112,19 @@ struct allNets_t{
                          else{
                               // get out bias data
                               Read_Layer_Data_By_DatName<T> (file, datasetPath.c_str(), bias, bias_rank, bias_dims);\
-                              cout << " Initialize layer : " << DLname << endl;
+                              cerr << " Initialize layer : " << DLname << endl;
                          
                               nets[currentNetNum].insert_layer(DLname, data_dims[0], data_dims[1], data, bias);
 
-                              cout << " Layer " << DLname << "  is initialized. " <<endl <<endl; 
+                              cerr << " Layer " << DLname << "  is initialized. " <<endl <<endl; 
 
 
                               //insert tanh activation layer afterwards
                               string actName = "Activation_" + to_string(layerID/2);
                               
-                              cout << " Initialize layer : " << actName << endl;
+                              cerr << " Initialize layer : " << actName << endl;
                               nets[currentNetNum].insert_layer(actName, ActType_t::TANH);
-                              cout << " Layer " << actName << "  is initialized. " <<endl <<endl;                                    
+                              cerr << " Layer " << actName << "  is initialized. " <<endl <<endl;                                    
                     
                               //reset values for next loop
                               data_rank=0;
@@ -1148,8 +1137,8 @@ struct allNets_t{
 
                     //make last layer activation type linear
                     nets[currentNetNum].get_layer_by_seq(layerID) -> acttype=ActType_t::LINEAR;
-                    cout<<"Changing Layer "<<nets[currentNetNum].get_layer_by_seq(layerID)->name<<" to Linear Activation"<<endl;
-                    cout << "Inserting Layers " << *it<< " Finished!"  <<endl;
+                    cerr<<"Changing Layer "<<nets[currentNetNum].get_layer_by_seq(layerID)->name<<" to Linear Activation"<<endl;
+                    cerr<<"Inserting Layers " << *it<< " Finished!"  <<endl;
 
                     currentNetNum++;
                   
@@ -1174,43 +1163,49 @@ struct allNets_t{
 
 
      void runAllNets(Gfunction_t<T> * gf, T * finalOutput, bool getGradient=false){
-          double * output = nullptr;
-          size_t outsize = 0;
-          size_t N = gf->NCluster;
+       timers.insert_random_timer( id, 0, "NN_total");
+       timers.timer_start(id);
 
-          for(int i = 0; i< gf->model.NATOM; i++){
-               size_t currAtomType = gf->model.TYPE_EACHATOM[i];
-               cout<<"Running Network for "<<currAtomType<< " Atom "<<i<<" : "<<endl;
-               getGradient = true; // hardcoded for test 
-               if(getGradient){
-                 nets[currAtomType].predict_and_getgrad(gf->G_d[i]->dat, gf->G_d[i]->pitch, N,
-                                                        gf->G_param_max_size[currAtomType], 
-                                                        output, outsize);
-               }else{
-                 nets[currAtomType].predict(gf->G_d[i]->dat,gf->G_d[i]->pitch,N,
-                                            gf->G_param_max_size[currAtomType], output, outsize);
-               }
+       double * output = nullptr;
+       size_t outsize = 0;
+       size_t N = gf->NCluster;
 
-               cout<<"Finish Network for "<<currAtomType<< " Atom "<<i<<" ."<<endl;
-               // cout<<"summed result before cutoff: " <<endl;
-               for(int a = 0; a< N; a++){
-                    finalOutput[a] += output[a]; 
-               //   cout<<a<< " "<< finalOutput[a]<<endl;
-               }
+       for(int i = 0; i< gf->model.NATOM; i++){
+         size_t currAtomType = gf->model.TYPE_EACHATOM[i];
+         // cout<<"Running Network for "<<currAtomType<< " Atom "<<i<<" : "<<endl;
+         getGradient = true; // hardcoded for test 
+         if(getGradient){
+           nets[currAtomType].predict_and_getgrad(gf->G_d[i]->dat, gf->G_d[i]->pitch, N,
+                                                  gf->G_param_max_size[currAtomType], 
+                                                  output, outsize);
+         }else{
+           nets[currAtomType].predict(gf->G_d[i]->dat,gf->G_d[i]->pitch,N,
+                                      gf->G_param_max_size[currAtomType], output, outsize);
+         }
+
+         // cout<<"summed result before cutoff: " <<endl;
+         for(int a = 0; a< N; a++){
+           finalOutput[a] += output[a]; 
+           //   cout<<a<< " "<< finalOutput[a]<<endl;
+         }
                // return; // quick debug 
-          }
+       }
 
-          T* cutoffs = nullptr;
-          cutoffs = (T*)malloc(N*sizeof(double));
-          cudaMemcpy(cutoffs, gf->cutoffs, N*sizeof(T), cudaMemcpyDeviceToHost);
-          for(int a = 0; a<N; a++){
-               finalOutput[a]*= cutoffs[a]*(EUNIT);
-          }
+       T* cutoffs = nullptr;
+       cutoffs = (T*)malloc(N*sizeof(double));
+       cudaMemcpy(cutoffs, gf->cutoffs, N*sizeof(T), cudaMemcpyDeviceToHost);
+       for(int a = 0; a<N; a++){
+         finalOutput[a]*= cutoffs[a]*(EUNIT);
+       }
 
-          if(output!=NULL) delete[] output;  
+       if(output!=NULL) delete[] output;  
+
+
+       timers.timer_end(id);
+       timers.get_all_timers_info();
+       timers.get_time_collections();
 
      }
-
 
 };
 
