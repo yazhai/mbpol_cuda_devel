@@ -1046,8 +1046,8 @@ for(size_t id_cluster = batchstart; id_cluster< batchlimit; id_cluster++)
 
 // }  // end of testing loop
 
-     // timers.get_all_timers_info();
-     // timers.get_time_collections();
+     timers.get_all_timers_info();
+     timers.get_time_collections();
 
 };
 

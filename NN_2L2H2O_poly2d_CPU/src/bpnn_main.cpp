@@ -1,6 +1,8 @@
 
 
 #include "bpnn_main.h"
+#include "timestamps.h"
+
 #include <iomanip>
 #include <getopt.h>
 #include <string.h>
@@ -281,6 +283,11 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
   bpnn_2h2o.energy_ = new T [bpnn_2h2o.NCLUSTER]();
   T * tmp = new T [bpnn_2h2o.NCLUSTER]() ;
 
+  timers_t timers;
+  timerid_t id;
+  timers.insert_random_timer( id, 0, "NN_total");
+  timers.timer_start(id);
+  // NN start here
   if(!ifgrad){
     for(idx_t at = 0; at < bpnn_2h2o.NATOM; at ++){
       size_t tp_idx = bpnn_2h2o.TYPE_EACHATOM[at];
@@ -349,6 +356,9 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
 
     cout << " gradient is done, but not returned " << endl;
   }
+  timers.timer_end(id);
+  timers.get_all_timers_info();
+  timers.get_time_collections();
                    
   delete [] tmp; 
 
@@ -356,8 +366,8 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
   for(size_t i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
     energy +=  bpnn_2h2o.energy_[i] * bpnn_2h2o.switch_factor[i];
     // TODO: replace with string defined in head file 
-    cout<<" Dimer " << i << " 's energy is " << 
-          bpnn_2h2o.energy_[i]* bpnn_2h2o.switch_factor[i] * (EUNIT) << endl;
+    // cout<<" Dimer " << i << " 's energy is " << 
+    //      bpnn_2h2o.energy_[i]* bpnn_2h2o.switch_factor[i] * (EUNIT) << endl;
   }
 
   return energy*(EUNIT);
