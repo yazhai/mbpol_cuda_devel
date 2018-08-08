@@ -88,7 +88,7 @@ int main(int argc, char** argv){
 
      //-------------------------------//CALCULATE ENERGIES //-------------------------------//
      allNets_t<double> * networkCollection = new allNets_t<double>(numTypes, INFILE1,CHECKCHAR); 
-     double * finalOutput = new double[N];
+     double * finalOutput = new double[N]();
      networkCollection -> runAllNets(gf,finalOutput);
 
 
