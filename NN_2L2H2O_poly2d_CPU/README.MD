@@ -78,10 +78,10 @@ To compile the tester EXE:
          - NO_VECT
          - (None, by default)   
      - Example:
-		-cmake -D_USE_GSL=1 -D_USEOPENMP=1 ..
-		-cmake -D_CMP_INTEL=1 -D_USE_MKL=1 -D_ENABLE_XHOST=1 ..
-   - `make` -- compiles executable to ../bin folder
-   - `make cleanAll` -- cleans up all outputfiles, object files, and executable
+       - `cmake -D_USE_GSL=1 -D_USEOPENMP=1 ..`
+       - `cmake -D_CMP_INTEL=1 -D_USE_MKL=1 -D_ENABLE_XHOST=1 ..`
+   - `make` : compiles executable to _../bin_ folder
+   - `make cleanAll` : cleans up all outputfiles, object files, and executable
 
 ## To RUN
 To run with tester input:
