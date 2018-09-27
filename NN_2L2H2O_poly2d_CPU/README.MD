@@ -58,7 +58,7 @@ To compile the tester EXE:
    - `rm -r build; mkdir build; cd build`
    - `cmake [-DFLAGS1=1 -DFLAGS2=1] ..`
 	-FLAGS may be ONE from EACH of the following groups:
-		- Compiler type option, may be one of:
+	  - Compiler type option, may be one of:
             - CMP_GNU [default];
             - CMP_INTEL;
           - CBLAS library utilization, may be one of:
@@ -68,7 +68,7 @@ To compile the tester EXE:
           - OpenMP support, may be one of:
             - USE_OPENMP;
             - (None, by default);
-		- the OPTIMIZE OPTION (compatible with Intel compiler) may be one of the following:
+	- the OPTIMIZE OPTION (compatible with Intel compiler) may be one of the following:
             - ENABLE_XHOST
             - ENABLE_CAVX512  
             - ENABLE_CRAVX512  
