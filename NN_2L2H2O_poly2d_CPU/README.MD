@@ -57,30 +57,29 @@ This tester first constructs the G-function using the resource files, and input,
 To compile the tester EXE:
    - `rm -r build; mkdir build; cd build`
    - `cmake [-DFLAGS1=1 -DFLAGS2=1] ..`
-	-FLAGS may be ONE from EACH of the following groups:
-	  - Compiler type option, may be one of:
-            - CMP_GNU [default];
-            - CMP_INTEL;
-          - CBLAS library utilization, may be one of:
-            - USE_MKL;[Works with Intel2017];
-            - USE_GSL;
-            - (None, by default);
-          - OpenMP support, may be one of:
-            - USE_OPENMP;
-            - (None, by default);
-	- the OPTIMIZE OPTION (compatible with Intel compiler) may be one of the following:
-            - ENABLE_XHOST
-            - ENABLE_CAVX512  
-            - ENABLE_CRAVX512  
-            - ENABLE_CRAVX2  
-            - ENABLE_CRAVXI  
-            - ENABLE_AVX  
-            - NO_VECT
-            - (None, by default)
-	-Example:
+     - FLAGS may be ONE from EACH of the following groups:
+       - Compiler type option, may be one of:
+         - CMP_GNU [default];
+         - CMP_INTEL;
+       - CBLAS library utilization, may be one of:
+         - USE_MKL;[Works with Intel2017];
+         - USE_GSL;
+         - (None, by default);
+       - OpenMP support, may be one of:
+         - USE_OPENMP;
+         - (None, by default);
+       - the OPTIMIZE OPTION (compatible with Intel compiler) may be one of the following:
+         - ENABLE_XHOST
+         - ENABLE_CAVX512  
+         - ENABLE_CRAVX512  
+         - ENABLE_CRAVX2  
+         - ENABLE_CRAVXI  
+         - ENABLE_AVX  
+         - NO_VECT
+         - (None, by default)   
+     - Example:
 		-cmake -D_USE_GSL=1 -D_USEOPENMP=1 ..
 		-cmake -D_CMP_INTEL=1 -D_USE_MKL=1 -D_ENABLE_XHOST=1 ..
-
    - `make` -- compiles executable to ../bin folder
    - `make cleanAll` -- cleans up all outputfiles, object files, and executable
 
