@@ -67,15 +67,15 @@ extern char nnFile[BUFSIZ];    // parameter file for Neural Network
 
 
 #define STR_USAGE_LONG "\n"\
-  "Usage: %s [--input] [--body] [--gradient] [--param] [--order] "\
+  "Usage: %s [--input=]XYZ_NAME [--body=2] [--gradient=0] [--param] [--order] "\
   "[--scale] [--nn] [--help]\n"\
   "Calcualte Molecule Enery.\n"\
   "  -i, --input <filename>  \n"\
-  "     Name of input file. Usaully ends with '.xyz'. Defaults to TODO \n"\
+  "     Name of input file. Usually ends with '.xyz'. Defaults to TODO \n"\
   "  -b, --body <2|3>  \n"\
-  "     Specify trimer or dimer \n"\
+  "     Specify dimer (default) or trimer \n"\
   "  -g, --gradient <0|1>  \n"\
-  "     Specify calculate gradient or not\n"\
+  "     Specify calculate gradient or not (default) \n"\
   "  -p, --param <filename>  \n"\
   "     Name of parameter file for G function. \n"\
   "  -o, --order <filename>  \n"\
@@ -88,7 +88,7 @@ extern char nnFile[BUFSIZ];    // parameter file for Neural Network
   "     Print the long help string\n"\
   "\n"
 
-#define STR_USAGE_SHORT "\nUsage: %s --input --body --gradient [--param]"\
+#define STR_USAGE_SHORT "\nUsage: %s [--input=]FILENAME [--body] [--gradient] [--param]"\
                           " [--order] [--scale] [--nn] [--help]\n"\
                           "Try '%s -h' for more information.\n"\
                           "Try '%s $(cat my_config)'to run with a configure "\
