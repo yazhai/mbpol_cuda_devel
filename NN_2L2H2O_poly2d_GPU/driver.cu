@@ -21,13 +21,13 @@
 #include<cudnn.h>
 
 
-#define INFILE_2B   "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_GPU/34.hdf5"
+#define INFILE_2B   "34.hdf5"
 #define INFILE1     INFILE_2B    // HDF5 files for Layer Data
 #define CHECKCHAR "l"                 // dense_1/kerne[l]      for "l"
 
 //scaling
-#define SCALE_FILE_H  "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_GPU/H_max"
-#define SCALE_FILE_O  "/server-home1/ndanande/Documents/mbpol_cuda_devel/NN_2L2H2O_poly2d_GPU/O_max"
+#define SCALE_FILE_H  "H_max"
+#define SCALE_FILE_O  "O_max"
 
 
 const char* FLAG_COLUMN_INDEX_FILE =   "columnfile" ;
@@ -93,9 +93,9 @@ int main(int argc, char** argv){
 
 
      //-------------------------------//DISPLAY RESULTS//-------------------------------//
-     cout<<"Final Results: "<<endl;
+     cerr<<"Final Results: "<<endl;
      for(int i = 0; i<N; i++){
-          cout<<finalOutput[i] << " "<<endl;
+          cerr<<finalOutput[i] << " "<<endl;
      }
 
 

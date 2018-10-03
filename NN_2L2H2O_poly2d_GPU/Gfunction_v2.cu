@@ -118,8 +118,8 @@ void Gfunction_t<T>::load_cutoffs(){
         fswitch_3b<T><<<BPG,TPB>>>(cutoffs, xyz_d->get_elem_ptr(0,0), xyz_d->get_elem_ptr(1,0), xyz_d->get_elem_ptr(2,0),0.0,ri, NCluster);  
     }
 
-     std::cerr<<"INSIDE OF LOAD CUTOFFS FUNCTION , DEVICE VECTOR IS: "<<std::endl;
-    printDeviceVector(cutoffs,NCluster);
+    // std::cerr<<"INSIDE OF LOAD CUTOFFS FUNCTION , DEVICE VECTOR IS: "<<std::endl;
+    // printDeviceVector(cutoffs,NCluster);
     return; 
 }
 
@@ -151,7 +151,7 @@ void Gfunction_t<T>::scale_G(const char ** _scaleFiles){
 
      // std::string filename = "O_out_scale.dat";
      // G_d[0]->printFile(filename.c_str());
-     std::cout<<std::endl;
+     // std::cout<<std::endl;
 
 
 }

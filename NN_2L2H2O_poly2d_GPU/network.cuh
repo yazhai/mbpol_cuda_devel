@@ -1164,7 +1164,7 @@ struct allNets_t{
 
      void runAllNets(Gfunction_t<T> * gf, T * finalOutput, bool getGradient=false){
        timers.insert_random_timer( id, 0, "NN_total");
-       timers.timer_start(id);
+       // timers.timer_start(id);
 
        double * output = nullptr;
        size_t outsize = 0;
@@ -1173,7 +1173,8 @@ struct allNets_t{
        for(int i = 0; i< gf->model.NATOM; i++){
          size_t currAtomType = gf->model.TYPE_EACHATOM[i];
          // cout<<"Running Network for "<<currAtomType<< " Atom "<<i<<" : "<<endl;
-         getGradient = true; // hardcoded for test 
+         // getGradient = true; // hardcoded for test
+         timers.timer_start(id); 
          if(getGradient){
            nets[currAtomType].predict_and_getgrad(gf->G_d[i]->dat, gf->G_d[i]->pitch, N,
                                                   gf->G_param_max_size[currAtomType], 
@@ -1182,6 +1183,7 @@ struct allNets_t{
            nets[currAtomType].predict(gf->G_d[i]->dat,gf->G_d[i]->pitch,N,
                                       gf->G_param_max_size[currAtomType], output, outsize);
          }
+         timers.timer_end(id);
 
          // cout<<"summed result before cutoff: " <<endl;
          for(int a = 0; a< N; a++){
@@ -1201,7 +1203,7 @@ struct allNets_t{
        if(output!=NULL) delete[] output;  
 
 
-       timers.timer_end(id);
+       // timers.timer_end(id);
        timers.get_all_timers_info();
        timers.get_time_collections();
 
