@@ -1,29 +1,18 @@
 #!/bin/bash
 
-exefile="./gfunction_generate.x"
-inpfile="NN_input_2LHO_correctedD6_f64.dat --ordfile=Gfn_order.dat"
-##inpfile="test.xyz"
+exefile="./bpnn_main.x"
+inpfile="2b.xyz"
+
 logfile="runtime.log"
 outfile="runtime_statistics.out"
-omp_thread_list=(1 2 4 8 16 24 32 48)         # Num of omp_threads list
-#omp_thread_list=(24)
-itr_each_thread=10                      # Num of repeating runs for every omp_thread configuration
-interested_labels="GAngular GRadial Gfn_ang_all Gfn_rad+ang_all Gf_run_all"  # interested timer labels, separated by space
-##interested_labels="Test_Random_Insert  Test_Fix_Insert  Test_Start  Test_End"  # interested timer labels, separated by space
+omp_thread_list=(1 2 4 8 16 24 32 36 48 72 96)         # Num of omp_threads list
+
+itr_each_thread=1                      # Num of repeating runs for every omp_thread configuration
+interested_labels="Gf_fwd_all NN_total "  # interested timer labels, separated by space
 
 
 rm -f ${logfile} ${outfile}
 ## run bench with different threads
-
-#compile_options=( ENABLE_XHOST  ENABLE_CAVX512  ENABLE_CRAVX512  ENABLE_CRAVX2  ENABLE_CRAVXI  ENABLE_AVX  NO_VECT)
-#for COMPOPT in "${compile_options[@]}"
-#do
-	#export ${COMPOPT}=1
-	#echo " Compile with OPTION : "  $COMPOPT >> $outfile
-     #${COMPOPT}=1 make
-     
-     rm -f ${logfile}
-
 
 for ((j=0; j<${#omp_thread_list[@]} ; j++ ))
 do
@@ -34,7 +23,7 @@ do
      for ((i=1; i<=$itr_each_thread; i++))
      do
           echo "Iteration No. = "  $i >> $logfile
-          ${exefile} ${inpfile} >> ${logfile}
+          ${exefile} ${inpfile} >> ${logfile} 2>/dev/null
      done
 done
 
@@ -42,7 +31,6 @@ done
 ## Readout logfile and make statstics
 awk -v utfile=${outfile} -v allfds="${interested_labels}" '
 BEGIN{     
-##     PROCINFO["sorted_in"] = "@ind_str_asc";
      nfds=split(allfds,fd_mtx," ");     
      omp_threads=0;
      first_time=1;        
@@ -108,10 +96,6 @@ END{
 }' $logfile
      
      echo >> $outfile
-	#unset $COMPOPT
-
-#compiler option - done
-#done
 
 
 cat ${outfile}

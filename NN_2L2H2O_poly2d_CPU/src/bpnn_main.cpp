@@ -295,7 +295,7 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
         *bpnn_2h2o.G[at], bpnn_2h2o.G_param_max_size[tp_idx], 
         bpnn_2h2o.NCLUSTER, tmp);
                
-      cout<<"Finish Network for "<<tp_idx<< " Atom "<<at<<" ."<<endl;
+      cerr<<"Finish Network for "<<tp_idx<< " Atom "<<at<<" ."<<endl;
 
       for(int i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
          bpnn_2h2o.energy_[i] += tmp[i];
