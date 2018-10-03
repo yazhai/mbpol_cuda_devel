@@ -54,8 +54,8 @@ $1~/OMP_NUM_THREADS/ {
           for ( i=1; i<=nfds; i++ ) {
                var = fd_mtx[i];
                if (count[var] != 0){
-                    ##ave = time_mtx[var]/count[var];
-                    ave = time_mtx[var] ;
+                    ave = time_mtx[var]/count[var];
+                    ## ave = time_mtx[var] ;
                } else {
                     ave = 0
                }               

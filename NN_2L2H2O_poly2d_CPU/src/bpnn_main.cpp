@@ -588,28 +588,28 @@ void checkDefaultFile(int body, char paramFile[], char orderFile[],
     // use default hdf5 file, defined in ../inc/bpnn_main.h
     if (body == 2) strncpy(nnFile, INFILE_2B, strlen(INFILE_2B));
     if (body == 3) strncpy(nnFile, INFILE_3B, strlen(INFILE_3B));
-    printf("Use defualt hdf5 for neural network:%s, which should"\
+   // printf("Use defualt hdf5 for neural network:%s, which should"\
            " be found within the same folder\n", nnFile);
   }
 
   if( paramFile[0] == '\0'){
     if (body == 2) strncpy(paramFile, PARAM_FILE_2B, strlen(PARAM_FILE_2B));
     if (body == 3) strncpy(paramFile, PARAM_FILE_3B, strlen(PARAM_FILE_3B));
-    printf("Use defualt param file for G function:%s which should"\
+    //printf("Use defualt param file for G function:%s which should"\
            " be found within the same folder\n", paramFile);
   }
 
   if( orderFile[0] == '\0'){
     if (body == 2) strncpy(orderFile, PARAM_FILE_2B, strlen(PARAM_FILE_2B));
     if (body == 3) strncpy(orderFile, PARAM_FILE_3B, strlen(PARAM_FILE_3B));
-    printf("Use defualt order file for G function:%s which should"\
+   // printf("Use defualt order file for G function:%s which should"\
             " be found within the same folder\n", orderFile);
   }
 
   if( scaleFile[0] == '\0'){
     if (body == 2) strncpy(scaleFile, PARAM_FILE_2B, strlen(PARAM_FILE_2B));
     if (body == 3) strncpy(scaleFile, PARAM_FILE_3B, strlen(PARAM_FILE_3B));
-    printf("Use defualt scale file for G function:%s which should"\
+    //printf("Use defualt scale file for G function:%s which should"\
            " be found within the same folder\n", scaleFile);
   }
 
