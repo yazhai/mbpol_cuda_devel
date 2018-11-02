@@ -364,7 +364,9 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
 
   T energy = 0;
   for(size_t i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
-    energy +=  bpnn_2h2o.energy_[i] * bpnn_2h2o.switch_factor[i];
+    T e = bpnn_2h2o.energy_[i] * bpnn_2h2o.switch_factor[i];
+    energy +=  e ;
+    cout <<  e*(EUNIT)  << endl;
     // TODO: replace with string defined in head file 
     // cout<<" Dimer " << i << " 's energy is " << 
     //      bpnn_2h2o.energy_[i]* bpnn_2h2o.switch_factor[i] * (EUNIT) << endl;

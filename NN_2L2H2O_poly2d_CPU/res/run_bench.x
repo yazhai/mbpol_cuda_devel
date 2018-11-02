@@ -5,9 +5,10 @@ inpfile="2b.xyz"
 
 logfile="runtime.log"
 outfile="runtime_statistics.out"
-omp_thread_list=(1 2 4 8 16 24 32 36 48 72 96)         # Num of omp_threads list
+#omp_thread_list=(1 2 4 8 16 24 32 36 48 72 96)         # Num of omp_threads list
+omp_thread_list=(1)
 
-itr_each_thread=5                      # Num of repeating runs for every omp_thread configuration
+itr_each_thread=3                      # Num of repeating runs for every omp_thread configuration
 interested_labels="Gf_fwd_all NN_total "  # interested timer labels, separated by space
 
 
