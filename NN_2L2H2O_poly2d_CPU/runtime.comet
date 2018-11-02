@@ -1,0 +1,286 @@
+OMP_NUM_THREADS = 1
+Iteration No. =  1
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 1459756        
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1676476        
+Iteration No. =  2
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 1481968        
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1660174        
+Iteration No. =  3
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 1459281        
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1656947        
+Iteration No. =  4
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 1499725        
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1648294        
+Iteration No. =  5
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 1496695        
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1648768        
+OMP_NUM_THREADS = 2
+Iteration No. =  1
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 745849         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 934783         
+Iteration No. =  2
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 742412         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 937021         
+Iteration No. =  3
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 742765         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 935988         
+Iteration No. =  4
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 741152         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 936321         
+Iteration No. =  5
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 747272         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 936091         
+OMP_NUM_THREADS = 4
+Iteration No. =  1
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 373828         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 538643         
+Iteration No. =  2
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 374441         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 535583         
+Iteration No. =  3
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 373818         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 529874         
+Iteration No. =  4
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 383039         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 544145         
+Iteration No. =  5
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 367464         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 495363         
+OMP_NUM_THREADS = 8
+Iteration No. =  1
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 191996         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 359693         
+Iteration No. =  2
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 192388         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 376868         
+Iteration No. =  3
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 194824         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 387964         
+Iteration No. =  4
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 192058         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 378611         
+Iteration No. =  5
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 193684         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 384840         
+OMP_NUM_THREADS = 16
+Iteration No. =  1
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 107025         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 341244         
+Iteration No. =  2
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 107535         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 331047         
+Iteration No. =  3
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 105806         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 332602         
+Iteration No. =  4
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 103768         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 320323         
+Iteration No. =  5
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 104153         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 320903         
+OMP_NUM_THREADS = 24
+Iteration No. =  1
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 75353          
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 302881         
+Iteration No. =  2
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 74815          
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 303580         
+Iteration No. =  3
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 136162         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 742539         
+Iteration No. =  4
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 246941         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 831996         
+Iteration No. =  5
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 130374         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1122191        
+OMP_NUM_THREADS = 32
+Iteration No. =  1
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 113532         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1467749        
+Iteration No. =  2
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 112969         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1307014        
+Iteration No. =  3
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 110371         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1582449        
+Iteration No. =  4
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 113657         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1259754        
+Iteration No. =  5
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 108139         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1176749        
+OMP_NUM_THREADS = 36
+Iteration No. =  1
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 116181         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1360474        
+Iteration No. =  2
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 112142         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1301127        
+Iteration No. =  3
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 110482         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1330408        
+Iteration No. =  4
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 112093         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1365698        
+Iteration No. =  5
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 110552         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1308958        
+OMP_NUM_THREADS = 48
+Iteration No. =  1
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 118848         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1732238        
+Iteration No. =  2
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 115876         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1690045        
+Iteration No. =  3
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 117474         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1698200        
+Iteration No. =  4
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 116031         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1673665        
+Iteration No. =  5
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 115963         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 1726262        
+OMP_NUM_THREADS = 72
+Iteration No. =  1
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 119432         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 2327711        
+Iteration No. =  2
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 120083         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 2290744        
+Iteration No. =  3
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 119437         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 2297421        
+Iteration No. =  4
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 119788         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 2297468        
+Iteration No. =  5
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 118473         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 2295185        
+OMP_NUM_THREADS = 96
+Iteration No. =  1
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 125408         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 2602266        
+Iteration No. =  2
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 123468         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 2592967        
+Iteration No. =  3
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 125657         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 2619194        
+Iteration No. =  4
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 125944         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 2584762        
+Iteration No. =  5
+ All timers information : 
+  TimerMark=   1    Label= Gf_fwd_all                   Time[MuS]= 126180         
+ All timers information : 
+  TimerMark= 0      Label= NN_total                     Time[MuS]= 2416912        
