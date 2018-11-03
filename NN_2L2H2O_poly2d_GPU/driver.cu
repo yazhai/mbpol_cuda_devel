@@ -97,6 +97,22 @@ int main(int argc, char** argv){
      for(int i = 0; i<N; i++){
           cerr<<finalOutput[i] << " "<<endl;
      }
+     
+     // accuracy check out
+     std::ifstream infile("E_nogrd.rst");
+     if( !infile.good() ){
+
+          std::ofstream ofs2 ("E_nogrd.rst", std::ofstream::out);
+
+          ofs2 << std::scientific << std::setprecision(16);
+
+          for(int i = 0; i<N; i++){
+               ofs2 <<finalOutput[i] <<endl;
+          }   
+          ofs2.close();
+     }  
+     
+     
 
 
      if(finalOutput!=NULL) delete[] finalOutput;   
