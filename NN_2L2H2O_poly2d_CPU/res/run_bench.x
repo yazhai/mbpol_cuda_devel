@@ -1,7 +1,7 @@
 #!/bin/bash
 
 exefile="./bpnn_main.x"
-inpfile="2b.xyz"
+inpfile="2b_to_fit.xyz"
 
 logfile="runtime.log"
 outfile="runtime_statistics.out"

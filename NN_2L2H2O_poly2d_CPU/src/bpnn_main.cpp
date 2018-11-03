@@ -363,14 +363,42 @@ T MBbpnnPlugin::get_eng_2h2o(const char* xyzfile, bool ifgrad ){
   delete [] tmp; 
 
   T energy = 0;
+  
   for(size_t i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
     T e = bpnn_2h2o.energy_[i] * bpnn_2h2o.switch_factor[i];
     energy +=  e ;
-    cout <<  e*(EUNIT)  << endl;
+    // cout <<  e*(EUNIT)  << endl;    
     // TODO: replace with string defined in head file 
     // cout<<" Dimer " << i << " 's energy is " << 
     //      bpnn_2h2o.energy_[i]* bpnn_2h2o.switch_factor[i] * (EUNIT) << endl;
   }
+  
+  // accuracy check out
+  std::ifstream infile("E_nogrd.rst");
+  if( !infile.good() ){
+            //std::ofstream ofs1 ("E_grd.rst", std::ofstream::out);
+            std::ofstream ofs2 ("E_nogrd.rst", std::ofstream::out);
+            //std::ofstream ofs3 ("grd_all.rst", std::ofstream::out);
+            //ofs1 << std::scientific << std::setprecision(16);
+            ofs2 << std::scientific << std::setprecision(16);
+            //ofs3 << std::scientific << std::setprecision(16);
+            //for(int ii=0; ii<nsys; ii++){
+               //ofs1 << E_grd[ii] << std::endl;
+               //ofs2 << E_nogrd[ii] << std::endl;
+               //for(int jj=0; jj<natoms*3; jj++){
+               //     ofs3 << grd_all[ii*natoms*3+jj] << "\t";
+               //}
+               //ofs3 << std::endl;
+            //} 
+            //ofs1.close();
+               for(size_t i = 0; i < bpnn_2h2o.NCLUSTER; i++ ){
+                    T e = bpnn_2h2o.energy_[i] * bpnn_2h2o.switch_factor[i];
+                    ofs2 <<  e*(EUNIT)  << endl;    
+               }            
+            ofs2.close();
+            //ofs3.close();
+  }  
+  
 
   return energy*(EUNIT);
 }

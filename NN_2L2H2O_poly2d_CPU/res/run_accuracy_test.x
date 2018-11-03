@@ -1,7 +1,7 @@
 #!/bin/bash
 
-reffile_list=("E_nogrd.ref" )
-rstfile_list=("runtime.log" )
+reffile_list=("2b_to_fit_xyz_energy.ref" )
+rstfile_list=("E_nogrd.rst" )
 
 err_threshold=1e-6
 
