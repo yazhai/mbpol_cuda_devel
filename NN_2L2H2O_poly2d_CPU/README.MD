@@ -56,7 +56,7 @@ This tester first constructs the G-function using the resource files, and input,
 ## To Compile:
 To compile the tester EXE:
    - `rm -r build; mkdir build; cd build`
-   - `cmake [-D_FLAGS1=1 -D_FLAGS2=1] ..`
+   - `cmake [-DFLAGS1=1 -DFLAGS2=1] ..`
      - FLAGS may be ONE from EACH of the following groups:
        - Compiler type option, may be one of:
          - GNU [default];
@@ -78,17 +78,16 @@ To compile the tester EXE:
          - ~~NO_VECT~~
          - O (optimization level, O0/1/2/3)
      - Example:
-       - `cmake -D_GSL=1 -D_OPENMP=1 -D_O=2 ..`
-       - `cmake -D_INTEL=1 -D_MKL=1 -D_XHOST=1 ..`
+       - `cmake -DGSL=1 -DOPENMP=1 -DO=2 ..`
+       - `cmake -DINTEL=1 -DMKL=1 -DXHOST=1 -DO=3 ..`
    - `make` : compiles executable to _../bin_ folder (in testing)
    - `make cleanAll` : cleans up all outputfiles, object files, and executable (in testing)
 
 ## To RUN
 To run with tester input:
    - Change directories to ./bin
-   - `./Full_NN 3b_to_fit.xyz -paramfile=Gfunc_params_3Bv3.dat -ordfile=Gfn_order.dat -gfnOut=1`
-   - -gfnOut=1 outputs intermediate gfunction outputs to files, otherwise only final energies are outputted to files
-   - compare
+   - `./Full_NN 2b_to_fit.xyz`
+   - `./run_accuracy_test.x` to validate
    
   
 
